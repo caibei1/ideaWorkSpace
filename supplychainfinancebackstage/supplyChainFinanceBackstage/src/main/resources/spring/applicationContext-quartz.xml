@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:task="http://www.springframework.org/schema/task" xmlns:util="http://www.springframework.org/schema/util"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+    http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.0.xsd
+    http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.0.xsd
+    http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd
+    http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task-4.0.xsd
+    http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-4.0.xsd">
+
+	<!-- 任务类 -->
+    <bean name="fundWithdrawTask" class="com.fuzamei.task.FundWithdrawTask" />
+
+	<!-- 定期更新权重入金退款定时器 -->
+	 <bean name="demo1"
+		class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject" ref="fundWithdrawTask" />
+		<property name="targetMethod" value="updateWeight" />
+		<property name="concurrent" value="false" />
+	</bean>
+	<bean id="scanBlockChainTrigger"
+		class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+		<property name="jobDetail" ref="demo1" />
+		<property name="cronExpression" value="0/5 * * * * ?" />
+	</bean>
+
+	<!-- 出金同意 定时器 -->
+	<bean name="demo2"
+		class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject" ref="fundWithdrawTask" />
+		<property name="targetMethod" value="updateWeight2" />
+		<property name="concurrent" value="false" />
+	</bean>
+	<bean id="scanBlockChainTrigger2"
+		class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+		<property name="jobDetail" ref="demo2" />
+		<property name="cronExpression" value="0/5 * * * * ?" />
+	</bean>
+
+	<!-- 宋东阳的定时类 -->
+	<bean name="queryBankFlow" class="com.fuzamei.task.QueryBankFlow" />
+
+	<bean name="demo3"
+		class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject" ref="queryBankFlow" />
+		<property name="targetMethod" value="queryMoneyFlow" />
+		<property name="concurrent" value="false" />
+	</bean>
+	<bean id="scanBlockChainTrigger3"
+		class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+		<property name="jobDetail" ref="demo3" />
+		<property name="cronExpression" value="0/5 * * * * ?" />
+	</bean>
+
+	<!-- 王斌的定时类 -->
+	<bean name="timeOutTask" class="com.fuzamei.task.TimeOutTask" />
+
+	<bean name="demo4"
+		class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject" ref="timeOutTask" />
+		<property name="targetMethod" value="taskInit" />
+		<property name="concurrent" value="false" />
+	</bean>
+	<bean id="scanBlockChainTrigger4"
+		class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+		<property name="jobDetail" ref="demo4" />
+		<property name="cronExpression" value="0 30 0 * * ?" />
+	</bean>
+
+
+   <!--启动调度器 -->
+	<bean id="scheduler"
+		class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
+		<property name="triggers">
+			<list>
+				<ref bean="scanBlockChainTrigger" />
+				 <ref bean="scanBlockChainTrigger2" />
+				<ref bean="scanBlockChainTrigger3" />
+				<ref bean="scanBlockChainTrigger4" />
+			</list>
+		</property>
+	</bean>
+  
+
+
+
+	
+
+
+
+</beans>

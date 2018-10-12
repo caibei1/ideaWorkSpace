@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace = "com.fuzamei.mapper.AuthMapper">
+	
+	<!-- 查询符合条件的权限信息供前端显示 -->
+	<select id="queryAuthInfo" parameterType="AuthBO" resultType="AuthVO">
+		select
+			authority_id,
+			authority_name,
+			create_time,
+			update_time
+		from 
+			back_authority
+		<where>
+			authority_id > #{authIdThreshHold}
+			<if test="authName!=null and authName!=''">
+				and authority_name like "%"#{authName}"%"
+			</if>
+		</where>
+		order by
+			create_time desc
+		limit
+			#{startPage},#{rowNum}
+	</select>
+	
+	<!-- 查询符合条件的权限信息总条数供前端分页使用 -->
+	<select id="queryAuthInfoCount" parameterType="AuthBO" resultType="int">
+		select
+			count(*)
+		from 
+			back_authority
+		<where>
+			authority_id > #{authIdThreshHold}
+			<if test="authName!=null and authName!=''">
+				and authority_name like "%"#{authName}"%"
+			</if>
+		</where>
+	</select>
+	
+	<!-- 删除权限信息 -->
+	<delete id="deleteAuth" parameterType="AuthBO">
+		delete from back_authority where authority_id in
+		<foreach collection="authIds" item="authId" open="(" close=")" separator=",">
+			#{authId}
+		</foreach>
+	</delete>
+	
+	<insert id="createAdminAuth" parameterType="AuthBO">
+		insert into back_authority(authority_id,authority_name,authority_url,create_time,update_time) values
+		<foreach collection="authArray" item="authEnum" separator="," index="index">
+			(#{authEnum.authId},#{authEnum.authName},#{authEnum.authUrl},#{createTime},#{updateTime})
+		</foreach>
+	</insert>
+	
+</mapper>

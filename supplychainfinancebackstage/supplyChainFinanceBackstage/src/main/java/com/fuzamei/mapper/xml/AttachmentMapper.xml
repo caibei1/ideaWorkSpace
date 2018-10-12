@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace = "com.fuzamei.mapper.AttachmentMapper">
+	
+	<select id="queryAttachmentInfomation" parameterType="DownLoadBO" resultType="AttachmentPO">
+		select 
+			name as attachemntName,
+			url as attachmentUrl
+		from 
+			attachemnt
+		where 
+			url=#{attachemntUrl}
+		and
+			id=#{attachmentId}
+	</select>
+	
+</mapper>

@@ -1,0 +1,47 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:context="http://www.springframework.org/schema/context" xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:aop="http://www.springframework.org/schema/aop" xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+	http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd
+	http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.0.xsd http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.0.xsd
+	http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-4.0.xsd">
+
+
+	<!-- 加载配置文件 -->
+    <bean id="propertyConfigurer" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="locations">
+            <list>
+                <value>classpath:jdbc.properties</value>
+            </list>
+        </property>
+    </bean>
+
+	<!-- 扫描包 -->
+	<context:component-scan base-package="com.fuzamei" />
+
+	<!-- 连接池的配置 -->
+	<bean id="dataSource" class="com.zaxxer.hikari.HikariDataSource" destroy-method="close">
+		<property name="driverClassName" value="${jdbc.driver}"></property>
+		<property name="jdbcUrl" value="${jdbc.url}"></property>
+		<property name="username" value="${jdbc.username}"></property>
+		<property name="password" value="${jdbc.password}"></property>
+		<property name="readOnly" value="false" />
+		<property name="connectionTimeout" value="${jdbc.connectionTimeout}" />
+		<property name="idleTimeout" value="${jdbc.idleTimeout}" />
+		<property name="maxLifetime" value="${jdbc.maxLifetime}" />
+		<property name="maximumPoolSize" value="${jdbc.maximumPoolSize}" />
+		<property name="minimumIdle" value="${jdbc.minimumIdle}" />
+	</bean>
+
+	<!-- 文件上传 -->
+	<bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver"> 
+    	<property name="defaultEncoding" value="utf-8"/> 
+    	<!-- 文件最大上传大小，包括多文件上传，指的是单次上传的时候文件的总大小，而不是仅仅只是单个文件的大小，这里是20MB -->
+        <property name="maxUploadSize" value="20971520"/>
+        <!-- 设置在文件上传时允许写到内存中的最大值，以字节(byte)为单位计算，默认是10240 这个是扫描文件的时候使用的，用来确认是否超过最大上传大小-->
+        <property name="maxInMemorySize" value="10240"/> 
+    </bean>
+    
+    
+</beans>

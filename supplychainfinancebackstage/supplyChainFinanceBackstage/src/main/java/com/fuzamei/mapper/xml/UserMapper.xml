@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace = "com.fuzamei.mapper.UserMapper">
+	
+	<!-- 根据用户名密码查询用户信息是否存在 -->
+	<select id="queryUserByNameAndPwd" resultMap="UserDetailRM">
+		select 
+			temp.user_id,
+			temp.username,
+			temp.password,
+			temp.person_name,
+			temp.parent_id,
+			temp.create_time,
+			temp.update_time,
+			t.token,
+			br.role_name,
+			ba.authority_url
+		from
+			<!-- 排除已经被删除的用户 -->
+			(select * from back_users where username=#{username} and password=#{password} and is_delete=1) temp
+		left join 
+			back_token t
+		on 
+			temp.user_id=t.user_id
+		left join 
+			back_user_role bur
+		on 
+			temp.user_id=bur.user_id
+		left join 
+			back_role br
+		on 
+			bur.role_id=br.role_id
+		left join 
+			back_role_authority bra
+		on 
+			br.role_id=bra.role_id
+		left join 
+			back_authority ba
+		on 
+			bra.authority_id=ba.authority_id
+	</select>
+	
+	<resultMap type="UserDetailDTO" id="UserDetailRM" autoMapping="true">
+		<id column="user_id" property="userId"/>
+		<collection property="roleName" ofType="java.lang.String" javaType="java.util.List">
+			<constructor>
+				<idArg column="role_name"/>
+			</constructor>
+		</collection>
+		<collection property="authorityUrl" ofType="java.lang.String" javaType="java.util.List">
+			<constructor>
+				<idArg column="authority_url"/>
+			</constructor>
+		</collection>
+	</resultMap>
+	
+	<select id="queryUserAuthority" resultMap="UserDetailRM">
+		select 
+			temp.user_id,
+			temp.username,
+			temp.password,
+			temp.person_name,
+			temp.parent_id,
+			temp.create_time,
+			temp.update_time,
+			temp.public_key,
+			temp.private_key,
+			br.role_name,
+			ba.authority_url
+		from
+			(select * from back_users where user_id=#{userId}) temp
+		left join 
+			back_user_role bur
+		on 
+			temp.user_id=bur.user_id
+		left join 
+			back_role br
+		on 
+			bur.role_id=br.role_id
+		left join 
+			back_role_authority bra
+		on 
+			br.role_id=bra.role_id
+		left join 
+			back_authority ba
+		on 
+			bra.authority_id=ba.authority_id
+	</select>
+	
+	<!-- 超级管理员进行账户查询使用的方法 -->
+	<select id="queryAccountInfoBySuperAdmin" parameterType="UserBO" resultType="AccountVO">
+		select 
+			user_id,
+			username,
+			password,
+			create_time,
+			update_time
+		from
+			back_users
+		<where>
+			is_delete=1
+				and 
+			user_id!=1
+			<if test="username!=null and username!=''">
+				and username like "%"#{username}"%"
+			</if>
+		</where>
+		order by 
+			create_time desc
+		limit 
+			#{startPage},#{rowNum}
+	</select>
+	
+	<!-- 超级管理员进行账户查询分页使用的方法 -->
+	<select id="queryAccountInfoCountBySuperAdmin" parameterType="UserBO" resultType="int">
+		select 
+			count(*)
+		from
+			back_users
+		<where>
+			is_delete=1
+				and
+			user_id!=1
+			<if test="username!=null and username!=''">
+				and username like "%"#{username}"%"
+			</if>
+		</where>
+	</select>
+	
+	<!-- 普通管理员进行账户查询使用的方法 -->
+	<select id="queryAccountInfoByAdmin" parameterType="UserBO" resultType="AccountVO">
+		select 
+			user_id,
+			username,
+			password,
+			create_time,
+			update_time
+		from
+			back_users
+		<where>
+			is_delete=1
+				and 
+			user_id not in
+			<foreach collection="adminIds" item="adminId" open="(" close=")" separator=",">
+				#{adminId}
+			</foreach>
+			<if test="username!=null and username!=''">
+				and username like "%"#{username}"%"
+			</if>
+		</where>
+		order by 
+			create_time desc
+		limit 
+			#{startPage},#{rowNum}
+	</select>
+	
+	<!-- 普通管理员进行账户查询分页使用的方法 -->
+	<select id="queryAccountInfoCountByAdmin" parameterType="UserBO" resultType="int">
+		select 
+			count(*)
+		from
+			back_users
+		<where>
+			is_delete=1
+				and 
+			user_id not in
+			<foreach collection="adminIds" item="adminId" open="(" close=")" separator=",">
+				#{adminId}
+			</foreach>
+			<if test="username!=null and username!=''">
+				and username like "%"#{username}"%"
+			</if>
+		</where>
+	</select>
+	
+	<!-- 逻辑删除用户信息 -->
+	<update id="deleteAccount" parameterType="UserBO">
+		update
+			back_users
+		set 
+			is_delete=0
+		where 
+			user_id in
+		<foreach collection="userIds" item="userId" open="(" close=")" separator=",">
+			#{userId}
+		</foreach>
+	</update>
+	
+</mapper>

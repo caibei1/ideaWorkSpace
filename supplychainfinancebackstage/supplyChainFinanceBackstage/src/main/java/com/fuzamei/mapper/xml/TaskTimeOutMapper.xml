@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace = "com.fuzamei.mapper.TaskManagermentMapper">
+
+    <select id="TimeOutBill" resultMap="BillOrderBaseResultMap">
+        select b.*,o.* from bill_order o, bill b where o.b_id = b.b_id
+        and (<!-- b.bill_end_date &lt; ${currentTime} or  -->o.buy_back_date &lt; ${currentTime})
+        and b_order_state_id = 56 and b.status = 1
+    </select>
+
+    <update id="saveTaskPledgeState">
+        update bill_order set b_order_state_id = #{pledgeOverdueState}, b_order_hash = #{hash}
+        where b_order_id in
+        <foreach collection="billOrderId" item="item" index="index" open="(" close=")" separator=",">
+            #{item}
+        </foreach>
+    </update>
+
+    <insert id="batchAddLogMessage">
+        insert into transaction_flow (transaction_flow_id, b_id, b_order_id,
+        transaction_flow_out_enterprise, transaction_flow_out_enterprise_name,
+        transaction_flow_in_enterprise, transaction_flow_in_enterprise_name,
+        transaction_flow_money, transaction_flow_transaction_time,
+        transaction_flow_completion_time, transaction_flow_discount_rate,
+        transaction_flow_discount_charges, transaction_flow_business_id,
+        transaction_flow_state_id, transaction_flow_remark,
+        transaction_flow_hash, transaction_flow_order_money,
+        transaction_flow_pay_id, p_id, transaction_flow_honour_money,
+        transaction_flow_buy_back_date)
+        values
+        <foreach collection="transactionFlow" item="item" open="" close="" separator=",">
+            (#{item.transactionFlowId,jdbcType=INTEGER}, #{item.bId,jdbcType=INTEGER}, #{item.bOrderId,jdbcType=INTEGER},
+            #{item.transactionFlowOutEnterprise,jdbcType=INTEGER}, #{item.transactionFlowOutEnterpriseName,jdbcType=VARCHAR},
+            #{item.transactionFlowInEnterprise,jdbcType=INTEGER}, #{item.transactionFlowInEnterpriseName,jdbcType=VARCHAR},
+            #{item.transactionFlowMoney,jdbcType=DOUBLE}, #{item.transactionFlowTransactionTime,jdbcType=BIGINT},
+            #{item.transactionFlowCompletionTime,jdbcType=BIGINT}, #{item.transactionFlowDiscountRate,jdbcType=DOUBLE},
+            #{item.transactionFlowDiscountCharges,jdbcType=DOUBLE}, #{item.transactionFlowBusinessId,jdbcType=INTEGER},
+            #{item.transactionFlowStateId,jdbcType=INTEGER}, #{item.transactionFlowRemark,jdbcType=VARCHAR},
+            #{item.transactionFlowHash,jdbcType=VARCHAR}, #{item.transactionFlowOrderMoney,jdbcType=DOUBLE},
+            #{item.transactionFlowPayId,jdbcType=INTEGER}, #{item.pId,jdbcType=INTEGER},
+            #{item.transactionFlowHonourMoney,jdbcType=DOUBLE}, #{item.transactionFlowBuyBackDate,jdbcType=BIGINT})
+        </foreach>
+    </insert>
+
+    <resultMap id="BillBaseResultMap" type="com.fuzamei.pojo.bo.TaskBillBO">
+        <result column="b_id" jdbcType="INTEGER" property="bId" />
+        <result column="bill_out_enterprise" jdbcType="INTEGER" property="billOutEnterprise" />
+        <result column="bill_out_enterprise_name" jdbcType="VARCHAR" property="billOutEnterpriseName" />
+        <result column="bill_in_enterprise" jdbcType="INTEGER" property="billInEnterprise" />
+        <result column="bill_in_enterprise_name" jdbcType="VARCHAR" property="billInEnterpriseName" />
+        <result column="bill_warrantor_id" jdbcType="INTEGER" property="billWarrantorId" />
+        <result column="bill_warrantor_name" jdbcType="VARCHAR" property="billWarrantorName" />
+        <result column="contract_no" jdbcType="VARCHAR" property="contractNo" />
+        <result column="system_num" jdbcType="VARCHAR" property="systemNum" />
+        <result column="bill_money" jdbcType="DOUBLE" property="billMoney" />
+        <result column="evidence_front" jdbcType="VARCHAR" property="evidenceFront" />
+        <result column="bill_outbill_date" jdbcType="BIGINT" property="billOutbillDate" />
+        <result column="bill_create_time" jdbcType="BIGINT" property="billCreateTime" />
+        <result column="bill_end_date" jdbcType="BIGINT" property="billEndDate" />
+        <result column="bill_state_id" jdbcType="INTEGER" property="billStateId" />
+        <result column="bill_operator_type" jdbcType="INTEGER" property="billOperatorType" />
+        <result column="rival_enterprise" jdbcType="VARCHAR" property="rivalEnterprise" />
+        <result column="bill_hash" jdbcType="VARCHAR" property="billHash" />
+        <result column="borrowing_rate" jdbcType="DOUBLE" property="billBorrowingRate" />
+        <result column="agreed_interest_rates" jdbcType="DOUBLE" property="agreedInterestRates" />
+        <result column="type" jdbcType="VARCHAR" property="type" />
+        <result column="bill_modify_time" jdbcType="BIGINT" property="billModifyTime" />
+        <result column="approve_money" jdbcType="DOUBLE" property="billApproveMoney" />
+    </resultMap>
+    <resultMap id="BillOrderBaseResultMap" type="com.fuzamei.pojo.bo.TaskBillOrderBO"
+               extends="BillBaseResultMap">
+        <result column="b_order_id" jdbcType="INTEGER" property="bOrderId" />
+        <result column="b_order_out_enterprise" jdbcType="INTEGER" property="bOrderOutEnterprise" />
+        <result column="b_order_out_enterprise_name" jdbcType="VARCHAR" property="bOrderOutEnterpriseName" />
+        <result column="b_order_in_enterprise" jdbcType="INTEGER" property="bOrderInEnterprise" />
+        <result column="b_order_in_enterprise_name" jdbcType="VARCHAR" property="bOrderInEnterpriseName" />
+        <result column="b_order_money" jdbcType="DOUBLE" property="bOrderMoney" />
+        <result column="b_order_record_money" jdbcType="DOUBLE" property="bOrderRecordMoney" />
+        <result column="parent_id" jdbcType="INTEGER" property="parentId" />
+        <result column="level" jdbcType="INTEGER" property="level" />
+        <result column="pack_id" jdbcType="INTEGER" property="packId" />
+        <result column="pay_id" jdbcType="INTEGER" property="payId" />
+        <result column="b_order_create_time" jdbcType="BIGINT" property="bOrderCreateTime" />
+        <result column="b_order_state_id" jdbcType="INTEGER" property="bOrderStateId" />
+        <result column="b_order_operator_type" jdbcType="INTEGER" property="bOrderOperatorType" />
+        <result column="discount_rate" jdbcType="DOUBLE" property="discountRate" />
+        <result column="borrowing_rate" jdbcType="DOUBLE" property="billOrderBorrowingRate" />
+        <result column="discount_charges" jdbcType="DOUBLE" property="discountCharges" />
+        <result column="b_order_hash" jdbcType="VARCHAR" property="bOrderHash" />
+        <result column="remark" jdbcType="VARCHAR" property="remark" />
+        <result column="order_money" jdbcType="DOUBLE" property="orderMoney" />
+        <result column="buy_back_date" jdbcType="BIGINT" property="buyBackDate" />
+        <result column="b_order_modify_time" jdbcType="BIGINT" property="bOrderModifyTime" />
+        <result column="approve_money" jdbcType="DOUBLE" property="billOrderApproveMoney" />
+        <result column="bill_money" jdbcType="DOUBLE" property="billMoney" />
+        <result column="bill_end_date" jdbcType="BIGINT" property="billEndDate" />
+        <result column="b_order_completion_time" jdbcType="VARCHAR" property="bOrderCompletionTime" />
+    </resultMap>
+</mapper>

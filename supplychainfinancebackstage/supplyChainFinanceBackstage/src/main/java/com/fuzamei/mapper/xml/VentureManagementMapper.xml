@@ -1,0 +1,402 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace = "com.fuzamei.mapper.VentureManagementMapper">
+	
+	<!-- 查询符合分页条件的billId，用于后续查询详细信息使用的billId -->
+	<select id="queryToBeVerifiedBillIds" parameterType="BillBO" resultType="int">
+		select 
+			b.b_id
+		from 
+			(select * from bill
+			<where>
+				<if test="enterpriseName!=null and ''!=enterpriseName">
+				bill_out_enterprise_name like "%"#{enterpriseName}"%" 
+					or 
+				bill_in_enterprise_name like "%"#{enterpriseName}"%" 
+					or 
+				bill_warrantor_name like "%"#{enterpriseName}"%"
+			</if>
+			</where>) b
+		left join 
+			attachment att
+		on
+			b.b_id=att.b_id
+		<where>
+			b.status=#{statusId}
+				and
+			att.type='zip'
+			<if test="startTime!=null and endTime!=null">
+				and b.bill_create_time between #{startTime} and #{endTime}
+			</if>
+		</where>
+		order by 
+			b.bill_create_time desc
+		limit
+			#{startPage},#{rowNum}
+	</select>
+	
+	<!-- 查询应收账待审核的所有详细数据信息 -->
+	<select id="queryToBeVerified" parameterType="BillBO" resultMap="BillVORM">
+		select 
+			b.b_id as billId,
+			b.bill_create_time as checkinTime,
+			b.bill_out_enterprise_name as payedEnterprise,
+			b.bill_in_enterprise as receivedEnterpriseId,
+			b.bill_in_enterprise_name as receivedEnterprise,
+			b.bill_warrantor_name as warrantEnterprise,
+			b.bill_money as bill_money,
+			b.bill_outbill_date as chargeoffTime,
+			b.bill_end_date as endTime,
+			b.borrowing_rate as interestRate,
+			bs.status_name,
+			att.url as attachmentUrl,
+			batt.attachment_id as responsibleAttachmentId,
+			batt.attachment_name as responsibleAttachmentName,
+			batt.attachment_url as responsibleAttachmentUrl
+		from
+			bill b
+		left join 
+			back_status bs
+		on 
+			b.status=bs.status
+		left join 
+			attachment att
+		on
+			b.b_id=att.b_id
+		left join 
+			back_attachment_bill bab
+		on 
+			b.b_id=bab.bill_id
+		left join 
+			back_attachment batt
+		on 
+			bab.attachment_id=batt.attachment_id
+		where 
+			b.b_id in 
+		<foreach collection="billIds" item="billId" open="(" close=")" separator=",">
+			#{billId}
+		</foreach>
+	</select>
+	
+	<!-- 查询应收账表待审核的记录条数 -->
+	<select id="queryToBeVerifiedCount" parameterType="BillBO" resultType="int">
+		select 
+			count(*)
+		from
+			(select * from bill
+			<where>
+				<if test="enterpriseName!=null and ''!=enterpriseName">
+				bill_out_enterprise_name like "%"#{enterpriseName}"%" 
+					or 
+				bill_in_enterprise_name like "%"#{enterpriseName}"%" 
+					or 
+				bill_warrantor_name like "%"#{enterpriseName}"%"
+			</if>
+			</where>
+			) b
+		left join 
+			attachment att
+		on 
+			b.b_id=att.b_id
+		<where>
+			b.status=#{statusId}
+				and
+			att.type='zip'
+			<if test="startTime!=null and endTime!=null">
+				and b.bill_create_time between #{startTime} and #{endTime}
+			</if>
+		</where>
+	</select>
+	
+	<!-- 查找单据信息使用的resultMap -->
+	<resultMap type="BillVO" id="BillVORM" autoMapping="true">
+		<id column="billId" property="billId"/>
+		<collection property="responsibleAttachments" ofType="ResponsibleAttachmentVO" autoMapping="true">
+			<id column="responsibleAttachmentId" property="responsibleAttachmentId"/>
+		</collection>
+	</resultMap>
+	
+	<!-- 查询符合分页条件的billId，用于后续查询详细信息使用的billId -->
+	<select id="queryVerifiedBillIds" parameterType="BillBO" resultType="int">
+		select 
+			b.b_id
+		from 
+			(select * from bill
+			<where>
+				<if test="enterpriseName!=null and ''!=enterpriseName">
+				bill_out_enterprise_name like "%"#{enterpriseName}"%" 
+					or 
+				bill_in_enterprise_name like "%"#{enterpriseName}"%" 
+					or 
+				bill_warrantor_name like "%"#{enterpriseName}"%"
+			</if>
+			</where>) b
+		left join 
+			attachment att
+		on
+			b.b_id=att.b_id
+		<where>
+			b.status in (1,2)
+				and
+			att.type='zip'
+			<if test="startTime!=null and endTime!=null">
+				and b.bill_create_time between #{startTime} and #{endTime}
+			</if>
+		</where>
+		order by 
+			b.bill_create_time desc
+		limit
+			#{startPage},#{rowNum}
+	</select>
+	
+	<!-- 查询应收账已审核的所有详细数据信息 -->
+	<select id="queryVerified" parameterType="BillBO" resultMap="BillVORM">
+		select 
+			b.b_id as billId,
+			b.bill_create_time as checkinTime,
+			b.bill_out_enterprise_name as payedEnterprise,
+			b.bill_in_enterprise as receivedEnterpriseId,
+			b.bill_in_enterprise_name as receivedEnterprise,
+			b.bill_warrantor_name as warrantEnterprise,
+			b.bill_money as bill_money,
+			b.bill_outbill_date as chargeoffTime,
+			b.bill_end_date as endTime,
+			b.borrowing_rate as interestRate,
+			bs.status_name,
+			att.url as attachmentUrl,
+			batt.attachment_id as responsibleAttachmentId,
+			batt.attachment_name as responsibleAttachmentName,
+			batt.attachment_url as responsibleAttachmentUrl
+		from
+			bill b
+		left join 
+			back_status bs
+		on 
+			b.status=bs.status
+		left join 
+			attachment att
+		on
+			b.b_id=att.b_id
+		left join 
+			back_attachment_bill bab
+		on 
+			b.b_id=bab.bill_id
+		left join 
+			back_attachment batt
+		on 
+			bab.attachment_id=batt.attachment_id
+		where
+			b.b_id in 
+		<foreach collection="billIds" item="billId" open="(" close=")" separator=",">
+			#{billId}
+		</foreach>
+	</select>
+	
+	<!-- 查询应收账表已审核的记录条数 -->
+	<select id="queryVerifiedCount" parameterType="BillBO" resultType="int">
+		select 
+			count(*)
+		from
+			(select * from bill
+			<where>
+				<if test="enterpriseName!=null and ''!=enterpriseName">
+				bill_out_enterprise_name like "%"#{enterpriseName}"%" 
+					or 
+				bill_in_enterprise_name like "%"#{enterpriseName}"%" 
+					or 
+				bill_warrantor_name like "%"#{enterpriseName}"%"
+			</if>
+			</where>
+			) b
+		left join 
+			attachment att
+		on 
+			b.b_id=att.b_id
+		<where>
+			b.status in (1,2)
+				and
+			att.type='zip'
+			<if test="startTime!=null and endTime!=null">
+				and b.bill_create_time between #{startTime} and #{endTime}
+			</if>
+		</where>
+	</select>
+	
+	
+	<select id="queryBillOrder" parameterType="BillOrderBO" resultType="BillOrderVO">
+		select 
+			b_order_out_enterprise as payedEnterprise,
+			b_order_money as money,
+			b_order_record_money as lockupMoney,
+			b_order_record_money as financingMoney,
+			b_order_record_money as repayment,
+			discount_rate as interestRate,
+			buy_back_date as expireTime,
+			b_order_state_id as status,
+			b_order_hash as hash
+		from 
+			bill_order
+		<where>
+			b_order_state_id in (55,56,74,75,60)
+			<if test="status!=null">
+				and b_order_state_id=#{status}
+			</if>
+			<if test="payedEnterprise!=null and payedEnterprise!=''">
+				and b_order_out_enterprise="%"#{payedEnterprise}"%"
+			</if>
+		</where>
+		order by 
+			b_order_create_time desc
+		limit 
+			#{startPage},#{rowNum}
+	</select>
+	
+	<select id="queryBillOrderCount" parameterType="BillOrderBO" resultType="int">
+		select 
+			count(*)
+		from 
+			bill_order
+		<where>
+			b_order_state_id in (55,56,74,75,60)
+			<if test="status!=null">
+				and b_order_state_id=#{status}
+			</if>
+			<if test="payedEnterprise!=null and payedEnterprise!=''">
+				and b_order_out_enterprise="%"#{payedEnterprise}"%"
+			</if>
+		</where>
+	</select>
+	
+	<!-- 单据后台审核同意的时候要详细查询单据中的数据和对应企业的数据是否正确 -->
+	<select id="queryBillById" parameterType="BillBO" resultMap="BillDTORM">
+		select 
+			b.b_id as billId,
+			b.bill_create_time as checkinTime,
+			b.bill_out_enterprise as payedEnterpriseId,
+			b.bill_out_enterprise_name as payedEnterpriseName,
+			b.bill_in_enterprise as receivedEnterpriseId,
+			b.bill_in_enterprise_name as receivedEnterpriseName,
+			b.bill_warrantor_id as warrantEnterprise,
+			b.bill_warrantor_name as warrantEnterpriseName,
+			b.bill_outbill_date as billOutTime,
+			b.bill_money as bill_money,
+			b.bill_end_date as endTime,
+			b.borrowing_rate as interestRate,
+			b.approve_money,
+			b.status,
+			b.bill_hash,
+			e.enterprise_id,
+			e.credit_line,
+			e.consumed_loan
+		from
+			(select * from bill where b_id=#{billId}) b
+		left join 
+			enterprise e
+		on 
+			b.bill_in_enterprise = e.enterprise_id
+	</select>
+	
+	<resultMap type="BillDTO" id="BillDTORM" autoMapping="true">
+		<association property="enterprisePO" javaType="EnterprisePO" autoMapping="true">
+		</association>
+	</resultMap>
+	
+	
+	<!-- 同盾结果管理的页面信息显示 -->
+	<select id="queryAllEnterpriseTongdunInfo" parameterType="TongdunBO" resultType="TongdunVO">
+		select 
+			enterprise_id,
+			enterprise_name,
+			report_time
+		from 
+			tongdun
+		<where>
+			<if test="receivedEnterpriseName!=null and receivedEnterpriseName!=''">
+				enterprise_name like "%"#{receivedEnterpriseName}"%"
+			</if>
+		</where>
+		order by
+			report_time desc
+		limit 
+			#{startPage},#{rowNum}
+	</select>
+	
+	<!-- 同盾结果管理的页面信息总条数 -->
+	<select id="queryAllEnterpriseTongdunInfoCount" parameterType="TongdunBO" resultType="int">
+		select count(*) from tongdun
+		<where>
+			<if test="receivedEnterpriseName!=null and receivedEnterpriseName!=''">
+				enterprise_name like "%"#{receivedEnterpriseName}"%"
+			</if>
+		</where>
+	</select>
+	
+	<!-- 审核通过后，将bill表中的数据原封不动的拷贝一份到bill_order表中去 -->
+	<insert id="insertToBillOrder" parameterType="BillOrderPO">
+		insert into bill_order(b_order_id,
+							   b_id,
+							   b_order_out_enterprise,
+							   b_order_out_enterprise_name,
+							   b_order_in_enterprise,
+							   b_order_in_enterprise_name,
+							   b_order_money,
+							   b_order_create_time,
+							   b_order_state_id,
+							   borrowing_rate,
+							   b_order_modify_time,
+							   approve_money,
+							   bill_money,
+							   bill_end_date,
+							   b_order_hash)
+						values(#{billOrderId},
+							   #{billId},
+							   #{payedEnterpriseId},
+							   #{payedEnterpriseName},
+							   #{receivedEnterpriseId},
+							   #{receivedEnterpriseName},
+							   #{approveMoney},
+							   #{createTime},
+							   #{status},
+							   #{interestRate},
+							   #{updateTime},
+							   #{approveMoney},
+							   #{billMoney},
+							   #{endTime},
+							   #{billOrderHash})
+	</insert>
+	
+	<!-- 额度管理模块中企业额度信息的查询 -->
+	<select id="queryEnterpriseCreditLine" parameterType="CreditBO" resultType="CreditVO">
+		select 
+			enterprise_id,
+			enterprise_name,
+			credit_line,
+			consumed_loan,
+			total_repayment
+		from 
+			enterprise
+		<where>
+			<if test="enterpriseName!=null and enterpriseName!=''">
+				enterprise_name like "%"#{enterpriseName}"%"
+			</if>
+		</where>
+		order by
+			authorize_time desc
+		limit
+			#{startPage},#{rowNum}
+	</select>
+	
+	<!-- 额度管理模块中企业额度信息的查询(做分页用) -->
+	<select id="queryEnterpriseCreditLineCount" parameterType="CreditBO" resultType="int">
+		select 
+			count(*)
+		from 
+			enterprise
+		<where>
+			<if test="enterpriseName!=null and enterpriseName!=''">
+				enterprise_name like "%"#{enterpriseName}"%"
+			</if>
+		</where>
+	</select>
+
+</mapper>

@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace = "com.fuzamei.mapper.UserManagementMapper">
+	<!-- 查询用户管理列表  带组合查询  带分页-->
+	<select id="queryUserManagement" resultType = "EnterpriseDTO"  parameterType="EnterpriseDTO">
+		select  
+	        q.authorize_time,
+	        q.legal_person_name,
+	        q.id_card,
+	        u.id_card_number,
+	        q.enterprise_name,
+	        q.office_address,
+	        q.license,
+	        u.phone,
+	        u.platformtoken,
+	        q.is_verification 
+         from  
+            enterprise q   
+         left  join   
+         	user_enterprise ue  
+         on  
+         	ue.enterprise_id=q.enterprise_id  
+         left  join  
+         	user u 
+         on u.uid=ue.uid
+	   <where>
+	   <!--<if test="isVerification!=null and isVerification!=''">
+	      	q.is_verification=#{isVerification}
+	       </if> -->
+	      <if test="enterpriseName!=null and enterpriseName!=''">
+	    	 and  q.enterprise_name like "%"#{enterpriseName}"%" 
+	      	<!-- and  q.enterprise_name like  CONCAT(CONCAT('%','${enterpriseName}','%' ))  -->
+	      </if>
+	      <if test="startTime!=null and endTime!=null">
+			and q.authorize_time between #{startTime} and #{endTime}
+		  </if>
+	  </where>
+	      order by  
+	      	q.authorize_time desc
+		  limit 
+		  	#{startPage},#{rowNum}
+	</select>
+	
+	<!--带条件查询用户管理总条数带条件带分页 -->
+	<select id="queryUserManagementCount" resultType = "int" parameterType="EnterpriseDTO">
+		select count(*)  from (
+		select  
+		        q.authorize_time,
+		        q.legal_person_name,
+		        q.id_card,
+		        q.enterprise_name,
+		        q.office_address,
+		        q.license,
+		        u.phone,
+		        u.platformtoken, 
+		        q.is_verification 
+         from  
+                enterprise q   left  join  user_enterprise ue  on  ue.enterprise_id=q.enterprise_id  left  join  user u on u.uid=ue.uid
+	    <where>
+		      <if test="enterpriseName!=null and enterpriseName!=''">
+		        q.enterprise_name like "%"#{enterpriseName}"%" 
+		    	<!--  and  q.enterprise_name like CONCAT(CONCAT('%','${enterpriseName}','%' ))   -->
+		      </if>
+		      <if test="startTime!=null and endTime!=null">
+				and q.authorize_time between #{startTime} and #{endTime}
+			  </if>
+		 </where>)temp
+		 
+	
+	</select>
+	
+	<!-- 查询用户管理(企业表is_verification)的所有状态为（1通过）（2未通过）给前端显示 -->
+	<select id="queryAllStatus"  resultType="com.fuzamei.pojo.po.EnterprisePO">
+		select is_verification  from  enterprise
+	</select>
+	
+	
+	<!-- 查询 （user表）信息 -->
+	<select id="queryUserInfo" resultType="com.fuzamei.pojo.dto.EnterpriseDTO">
+	  select  
+	        q.verification_time,
+	        q.legal_person_name,
+	        u.id_card_number,
+	        q.enterprise_name,
+	        q.office_address,
+	        q.license,
+	        u.phone,
+	        u.platformtoken,
+	        q.is_verification 
+         from  
+            enterprise q   
+         left  join  
+         	user_enterprise ue  
+         on  
+         	ue.enterprise_id=q.enterprise_id  
+         left  join  
+         	user u 
+         on u.uid=ue.uid
+	</select>
+	
+	
+	
+
+</mapper>

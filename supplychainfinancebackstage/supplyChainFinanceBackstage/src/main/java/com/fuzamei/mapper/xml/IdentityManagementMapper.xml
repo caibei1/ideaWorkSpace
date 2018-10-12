@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace = "com.fuzamei.mapper.IdentityManagementMapper">
+	
+	<!-- 给账号分配角色的方法 -->
+	<insert id="insertNewAssignment4Account" parameterType="UserRoleBO">
+		insert into back_user_role(user_id,role_id) values
+		<foreach collection="roleIds" item="item" index="index" separator=",">
+			(#{userId},#{item})
+		</foreach>
+	</insert>
+	
+	<!-- 给角色分配权限的方法 -->
+	<insert id="insertNewAssignment4Role" parameterType="RoleAuthBO">
+		insert into back_role_authority(role_id,authority_id) values
+		<foreach collection="authIds" item="item" index="index" separator=",">
+			(#{roleId},#{item})
+		</foreach>
+	</insert>
+
+	<insert id="createAuth4Admin" parameterType="BackRoleAuthPO">
+		insert into back_role_authority(role_id,authority_id) values
+		<foreach collection="authorityIds" item="item" index="index" separator=",">
+			(#{roleId},#{item})
+		</foreach>
+	</insert>
+	
+	<!-- 删除用户角色中角色信息 -->
+	<delete id="deleteRoleFromUserRole" parameterType="RoleBO">
+		delete from back_user_role where role_id in
+		<foreach collection="roleIds" item="roleId" separator="," open="(" close=")">
+			#{roleId}
+		</foreach>
+	</delete>
+	
+	<!-- 删除角色权限中角色信息 -->
+	<delete id="deleteRoleFromRoleAuth" parameterType="RoleBO">
+		delete from back_role_authority where role_id in
+		<foreach collection="roleIds" item="roleId" open="(" close=")" separator=",">
+			#{roleId}
+		</foreach>
+	</delete>
+	
+	<!-- 删除角色权限表中的权限信息 -->
+	<delete id="deleteAuthFromRoleAuth" parameterType="AuthBO">
+		delete from back_role_authority where authority_id in
+		<foreach collection="authIds" item="authId" open="(" close=")" separator=",">
+			#{authId}
+		</foreach>
+	</delete>
+</mapper>

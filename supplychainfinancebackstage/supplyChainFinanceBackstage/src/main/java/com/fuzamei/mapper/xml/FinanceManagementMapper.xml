@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace = "com.fuzamei.mapper.FinanceManagementMapper">
+
+	<!--财务管理查询是（人工入账）的  （入金待审核信息）  manusl_automatic=1是人工入账  2是自动入帐      state_id=1代表入金  2代表出金 【入金不需要复审】    status=5代表待审核  6代表已审核-->
+	<select id="queryGolden" resultType="com.fuzamei.pojo.dto.FinanceDTO" parameterType="com.fuzamei.pojo.bo.FinanceBO">
+	     select  
+	             xjl.transaction_id,
+	             xjl.enterprise_name,
+	             xjl.amount,
+	             xjl.create_time,
+	             xjl.bank_card_id 
+	       from  cash_flow  xjl
+		 <where>
+		     xjl.manusl_automatic=1   and  xjl.state_id=1 and xjl.status=5
+		    <if test="enterpriseName!=null and ''!=enterpriseName">
+		      and  xjl.enterprise_name like  "%"#{enterpriseName}"%"
+		    </if>
+		 </where>
+		    order by create_time desc
+		    limit #{startPage},#{rowNum}
+	</select>
+	
+	<!-- 财务管理查询入金的待审核总条数         manusl_automatic=1是人工入账  2是自动入帐    state_id=1代表入金  2代表出金-->
+	<select id="queryGoldenCount" resultType="int" parameterType="com.fuzamei.pojo.bo.FinanceBO">
+	   select  count(*)  from (
+	     select  
+	             xjl.transaction_id,
+	             xjl.enterprise_name,
+	             xjl.amount,
+	             xjl.create_time,
+	             xjl.bank_card_id 
+	       from  cash_flow  xjl
+		 <where>
+		     xjl.manusl_automatic=1  and xjl.status=5 and  xjl.state_id=1
+		    <if test="enterpriseName!=null and ''!=enterpriseName">
+		      and  xjl.enterprise_name like  "%"#{enterpriseName}"%"
+		    </if>
+		 </where>) temp
+		  order by create_time desc
+		    limit #{startPage},#{rowNum} 
+	</select>
+
+
+
+
+    <!--财务管理查询是（人工入账）入金的 [【已审核信息】 manusl_automatic=1是人工入账  2是自动入帐  【入金不需要复审】state_id=1代表入金  2代表出金--><!--  XXX-->
+    <select id="queryGoldenOKCheck" resultType="com.fuzamei.pojo.dto.FinanceDTO" parameterType="com.fuzamei.pojo.bo.FinanceBO">
+	 select   xjl.transaction_id,
+	          xjl.enterprise_name,
+	          xjl.amount,
+	          xjl.create_time,
+	          xjl.end_time,
+	          xjl.bank_card_id,
+	          bs.status_name 
+       from   cash_flow  xjl left  join back_status  bs  on bs.status=xjl.status
+		 <where>
+		     xjl.manusl_automatic=1   and  xjl.state_id=1 and xjl.status in (3,4)
+		    <if test="enterpriseName!=null and ''!=enterpriseName">
+		      and  xjl.enterprise_name like  "%"#{enterpriseName}"%"
+		    </if>
+		 </where>
+		    order by create_time desc
+		    limit #{startPage},#{rowNum}
+	</select>
+	
+	<!-- 财务管理查询入金的【已审核】总条数 -   manusl_automatic=1是人工入账  2是自动入帐       state_id=1代表入金  2代表出金--><!--XXX  -->
+	<select id="queryGoldenOKCheckCount" resultType="int" parameterType="com.fuzamei.pojo.bo.FinanceBO">
+		select  count(*)  from (
+       	 select   xjl.transaction_id,
+		          xjl.enterprise_name,
+		          xjl.amount,
+		          xjl.create_time,
+		          xjl.end_time,
+		          xjl.bank_card_id,
+	              bs.status_name 
+       from   cash_flow  xjl left  join back_status  bs  on bs.status=xjl.status
+		 <where>
+		     xjl.manusl_automatic=1  and  xjl.state_id=1 and xjl.status in (3,4)
+		    <if test="enterpriseName!=null and ''!=enterpriseName">
+		      and  xjl.enterprise_name like  "%"#{enterpriseName}"%"
+		    </if>
+		 </where>) temp
+		    order by create_time desc
+		    limit #{startPage},#{rowNum}
+	</select>
+	
+	<select id="querycashFlow" parameterType="FinancePO" resultType="FinancePO">
+		 select   transaction_id,
+		          enterprise_name,
+		          amount,
+		          create_time,
+		          bank_card_id,
+		          status
+	     from    
+	             cash_flow 
+	     where   transaction_id=#{transactionId}
+	</select>
+	
+    
+	<!--【入金】根据 企业的id查询企业下对应的账户的总资产和可用余额（1对1）-->
+	<select id="queryAccountTotalAssetByEnterpriseId" parameterType="com.fuzamei.pojo.po.FinancePO" resultMap="BaseResultMap">
+		select a.total_asset,a.usable_money  from account a left join  enterprise q  on  q.enterprise_id=a.account_id  where  q.enterprise_id=#{enterpriseId}
+	</select>
+	
+	<!--【入金】 当入金审核得时候，财务点击同意修改现金流表里得状态改为（已同意） -->
+	<update id="updateGoldenCashFlowStatus" parameterType="com.fuzamei.pojo.po.FinancePO">
+		 update cash_flow set status=#{status}  where  transaction_id=#{transactionId}  and  state_id=1  and manusl_automatic=1
+	</update>
+	
+
+	<!-- 【入金 】当入金审核得时候，财务点击同意修改现金流表里得状态改为（已审核） 同时给账户表得【总资产】加上去  和    可用金额也加上（充值金额）起来 -->
+	<update id="updateAccountSumMoney" parameterType="com.fuzamei.pojo.po.FinancePO">
+		 update account set total_asset=#{totalAsset},usable_money=#{usableMoney} where account_id=#{accountId} 
+	</update> 
+	
+<!--///////////////////////////////////////////////////以上是入金(待审核)(已审核)(点击同意或拒绝)操作////////////////////////////////////////////////////////////////////////////////////////////////  -->
+<!--///////////////////////////////////////////////////以下是出金(待审核)(已审核)(点击同意或拒绝)操作/////////////////////////////////////////////////////////////////////////////////////////////////  -->
+   <!-- 财务管理查看出金【待审核的】查看的是人工入账和自动入账的两种   state_id=1代表入金  2代表出金--><!--5待审核 6是已审核 7是待复审  8是已复审  manusl_automatic=1是人工入账  2是自动入帐-->
+    <select id="queryOutGold" resultType="com.fuzamei.pojo.dto.FinanceDTO" parameterType="com.fuzamei.pojo.bo.FinanceBO" >
+		  select  
+	             xjl.transaction_id,
+	             xjl.enterprise_name,
+	             xjl.amount,
+	             xjl.create_time
+	       from  cash_flow  xjl
+       <where>
+                 xjl.status=5 and  xjl.state_id=2
+         <if test="enterpriseName!=null and ''!=enterpriseName">
+		        and  xjl.enterprise_name like  "%"#{enterpriseName}"%"
+		 </if>
+       </where>
+            order by create_time desc
+		    limit #{startPage},#{rowNum}
+    </select>
+    
+	<!--查询出金待审核的总条数     state_id=1代表入金  2代表出金--><!-- 5待审核 6是已审核  7是待复审  8是已复审 -->
+   <select id="queryOutGoldCount" resultType="int" parameterType="com.fuzamei.pojo.bo.FinanceBO" >
+		select count(*) from (
+			select  
+	              transaction_id,
+	              enterprise_name,
+	              amount,
+	              create_time
+	       from   cash_flow  
+       <where>
+                 status=5 and state_id=2
+         <if test="enterpriseName!=null and ''!=enterpriseName">
+		        and  enterprise_name like  "%"#{enterpriseName}"%"
+		 </if>
+       </where>)te
+            order by create_time desc
+		    limit #{startPage},#{rowNum}
+    </select>
+    
+    
+    
+    <!-- 查询出金已审核的   state_id=1代表入金  2代表出金--><!-- 5待审核 6是已审核  7是待复审  8是已复审 -->
+     <select id="queryOutGoldOkCheck" resultType="com.fuzamei.pojo.dto.FinanceDTO" parameterType="com.fuzamei.pojo.bo.FinanceBO" >
+		  select  
+	             xjl.transaction_id,
+	             xjl.enterprise_name,
+	             xjl.amount,
+	             xjl.create_time,
+	             xjl.end_time,
+	             bs.status_name
+	       from  cash_flow  xjl  left  join back_status  bs  on bs.status=xjl.status
+     <where>
+                 xjl.status in(3,4)  and  xjl.state_id=2
+         <if test="enterpriseName!=null and ''!=enterpriseName">
+		        and  xjl.enterprise_name like  "%"#{enterpriseName}"%"
+		 </if>
+     </where>
+            order by create_time desc
+		    limit #{startPage},#{rowNum}
+    </select>
+    
+	<!-- 查询出金已审核的总条数    state_id=1代表入金  2代表出金--><!-- 5待审核 6是已审核  7是待复审  8是已复审 -->
+   <select id="queryOutGoldCountOkCheckCount" resultType="int" parameterType="com.fuzamei.pojo.bo.FinanceBO" >
+		select count(*) from (
+		   select  
+	             xjl.transaction_id,
+	             xjl.enterprise_name,
+	             xjl.amount,
+	             xjl.create_time,
+	             xjl.end_time,
+	             bs.status_name
+	       from  cash_flow  xjl  left  join back_status  bs  on bs.status=xjl.status
+     <where>
+                 xjl.status  in(3,4) and  xjl.state_id=2
+         <if test="enterpriseName!=null and ''!=enterpriseName">
+		        and  xjl.enterprise_name like  "%"#{enterpriseName}"%"
+		 </if>
+     </where>) temp
+            order by create_time desc
+		    limit #{startPage},#{rowNum}
+    </select>
+	
+    <!--【出金】  -->
+	<select id="querycashFlowOutGold" parameterType="FinancePO" resultType="FinancePO">
+		 select   transaction_id,
+		          enterprise_name,
+		          amount,
+		          create_time,
+		          status
+	     from    
+	             cash_flow 
+	     where   transaction_id=#{transactionId}
+	</select>
+	
+    <!--【财务出纳 出金】 当出金审核得时候，财务出纳点击同意修改现金流表里得状态改为（已同意） -->
+	<update id="updateGoldenOutGoldCashFlowStatus" parameterType="com.fuzamei.pojo.po.FinancePO">
+		 update cash_flow set status=#{status} where  transaction_id=#{transactionId} and  state_id=2  and manusl_automatic=1 or 2
+	</update>
+	
+    <!-- 【财务出金 】当出金审核得时候，财务出纳点击同意修改现金流表里得状态改为（已同意） 不能给账户表得【总资产】减去  和    可用金额（提现金额）也减去 -->
+    <update id="updateOutGoldAccountSumMoney" parameterType="com.fuzamei.pojo.po.FinancePO">
+		 update account set total_asset=#{totalAsset},usable_money=#{usableMoney} where account_id=#{accountId} 
+	</update>
+    
+    
+<!--////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  -->
+											<!--以下 出金 (待复审)(已复审)操作  -->
+
+<!--财务主管人员二次审核 【待复审】 确认出金 列表 -->
+	<select id="queryToReview" parameterType="com.fuzamei.pojo.bo.FinanceBO" resultType="com.fuzamei.pojo.dto.FinanceDTO">
+		
+	
+	</select>
+<!--********************************************配置*********************************************************************** -->
+ <resultMap id="BaseResultMap" type="com.fuzamei.pojo.po.FinancePO" extends="AccountBaseResultMap">
+    
+    <id column="transaction_id" jdbcType="INTEGER" property="transactionId" />
+    <result column="transaction_flow_id" jdbcType="INTEGER" property="transactionFlowId" />
+    <result column="enterprise_id" jdbcType="INTEGER" property="enterpriseId" />
+    <result column="operator_id" jdbcType="INTEGER" property="operatorId" />
+    <result column="bank_card_id" jdbcType="BIGINT" property="bankCardId" />
+    <result column="enterprise_name" jdbcType="VARCHAR" property="enterpriseName" />
+    <result column="amount" jdbcType="DOUBLE" property="amount" />
+    <result column="state_id" jdbcType="INTEGER" property="stateId" />
+    <result column="status" jdbcType="INTEGER" property="status" />
+    <result column="create_time" jdbcType="BIGINT" property="createTime" />
+    <result column="end_time" jdbcType="BIGINT" property="endTime" />
+    <result column="review_time" jdbcType="BIGINT" property="reviewTime" />
+    <result column="manusl_automatic" jdbcType="INTEGER" property="manuslAutomatic" />
+    <result column="type" jdbcType="INTEGER" property="type" />
+    <result column="cash_flow_hash" jdbcType="VARCHAR" property="cashFlowHash" />
+  </resultMap>
+  
+  <resultMap id="AccountBaseResultMap" type="com.fuzamei.pojo.po.AccountPO">
+    <id column="id" jdbcType="INTEGER" property="id" />
+    <result column="account_id" jdbcType="INTEGER" property="accountId" />
+    <result column="account_name" jdbcType="VARCHAR" property="accountName" />
+    <result column="total_asset" jdbcType="DOUBLE" property="totalAsset" />
+    <result column="create_time" jdbcType="BIGINT" property="createTime" />
+    <result column="modify_time" jdbcType="BIGINT" property="modifyTime" />
+    <result column="freeze_money" jdbcType="DOUBLE" property="freezeMoney" />
+    <result column="usable_money" jdbcType="DOUBLE" property="usableMoney" />
+  </resultMap>
+
+
+	<!-- 待 待待  XXX ？？？？？？？？？-->
+    <select id="selectFinanceVOBean" resultType="FinanceVO">
+          select  *  from cash_flow
+    </select>
+
+
+
+
+
+
+
+
+</mapper>

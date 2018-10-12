@@ -1,0 +1,440 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fuzamei.mapper.WsjTestMapper">
+	
+	<!-- 根据用户id和权限id查询是否有权限 -->
+	<select id="validateAuth" resultType="Integer">
+		select
+			count(*)
+		from
+			back_users user,
+			back_user_role	ur,
+			back_role role,
+			back_role_authority ra
+		where
+			user.user_id = #{userId}
+		and
+			ur.user_id = user.user_id
+		and
+			ur.role_id = role.role_id
+		and
+			role.role_id = ra.role_id
+		and 
+			ra.authority_id = #{auth}
+	</select>
+
+	<select id="findEnterprise" parameterType="com.fuzamei.pojo.dto.EnterpriseDTO" resultType="com.fuzamei.pojo.dto.EnterpriseDTO">
+		select
+			e.authorize_time,
+			e.verification_time,
+			e.office_address,
+			e.license,
+			e.legal_person_name,
+			e.enterprise_name,
+			e.id_card,
+			u.phone,
+			u.name,
+			u.id_card_number
+		from
+			enterprise e
+		left join 
+			user_enterprise ue
+		on
+			e.enterprise_id = ue.enterprise_id
+		left join
+			user u
+		on
+			u.uid = ue.uid
+		<where>
+			<!-- e.is_verification = 1 -->
+			<if test="enterpriseName != '' and enterpriseName != null">
+				and (e.enterprise_name like CONCAT('%',#{enterpriseName},'%')
+				or u.phone = #{enterpriseName})
+			</if>
+			<if test="startTime!=null and endTime!=null">
+				and e.authorize_time between #{startTime} and #{endTime}
+			</if>
+			order by
+				e.authorize_time desc
+			limit
+				#{startPage},#{rowNum}
+			
+		</where>
+	</select>
+	
+	<select id="queryGold" resultType="com.fuzamei.pojo.po.BankMoneyFlowPO">
+		select
+			bmf.*,
+			bs.state_name
+			<!-- bank_transaction_no,
+			enterprise_name,
+			amount,
+			create_time,
+			bank_card -->
+		from
+			bank_money_flow bmf
+		left join
+			back_state bs
+		on
+			bmf.state = bs.state_id
+		<where>
+			bmf.state in
+			<foreach collection="states" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach> 
+			<if test="enterpriseDTO.enterpriseName!='' and enterpriseDTO.enterpriseName != null">
+				and bmf.enterprise_name like CONCAT('%',#{enterpriseDTO.enterpriseName},'%')
+			</if>
+			<if test="operateType!='' and operateType != null">
+				and bmf.operation_type = #{operateType}
+			</if>
+			order by
+				bmf.create_time
+			limit
+				#{enterpriseDTO.startPage},#{enterpriseDTO.rowNum}
+		</where>
+	</select>
+	
+	
+	<!-- 查询记录数 -->
+	<select id="queryGoldNum" resultType="Integer">
+		select
+			count(*)
+			<!-- bank_transaction_no,
+			enterprise_name,
+			amount,
+			create_time,
+			bank_card -->
+		from
+			bank_money_flow
+		<where>
+			state in
+			<foreach collection="states" item="item" index="index" open="(" separator="," close=")">
+				#{item}
+			</foreach> 
+			<if test="enterpriseDTO.enterpriseName!='' and enterpriseDTO.enterpriseName != null">
+				and enterprise_name like CONCAT('%',#{enterpriseDTO.enterpriseName},'%')
+			</if>
+			<if test="operateType!='' and operateType != null">
+				and operation_type = #{operateType}
+			</if>
+		</where>
+	</select>
+	
+	<update id="changeBankMoneyFlowState">
+		update
+			bank_money_flow
+		set
+			state = #{state}
+		where
+			money_flow_no = #{moneyFlowNo}
+	</update>
+	
+	<select id="findBankMoneyFlowStateBymoneyFlowNo" parameterType="String" resultType="Integer">
+		select
+			state
+		from
+			bank_money_flow
+		where
+			money_flow_no = #{moneyFlowNo}
+	</select>
+	
+	<!-- //插入初审人信息和时间 -->
+	<update id="updateBankMoneyEndTimeBymoneyFlowNo">
+		update
+			bank_money_flow
+		set
+			end_time = #{endTime}
+		where
+			money_flow_no = #{moneyFlowNo}
+	</update>
+	
+	<!-- 根据moneyFlowNo查找记录  -->
+	<select id="findBankMoneyFlowBymoneyFlowNo" parameterType="String" resultType="com.fuzamei.pojo.po.BankMoneyFlowPO">
+		select
+			*
+		from
+			bank_money_flow
+		where
+			money_flow_no = #{moneyFlowNo}
+	</select>
+	
+	<!-- /更新账户可用余额和总资产 -->
+	<update id="updateAccountUsableAndTotalByAccountId">
+		update
+			account
+		set 
+			usable_money = usable_money + #{amount},
+			total_asset = total_asset + #{amount},
+			modify_time = #{currentTimeMillis}
+		where
+			account_id = #{accountId}
+			
+	</update>
+	
+	<!-- /更新账户冻结金额和总资产 -->
+	<update id="updateAccountFreezeAndTotalByAccountId">
+		update
+			account
+		set 
+			freeze_money = freeze_money - #{amount},
+			total_asset = total_asset - #{amount},
+			modify_time = #{currentTimeMillis}
+		where
+			account_id = #{accountId}
+	</update>
+	
+	<!-- //更新账户冻结金额和可用资产 -->
+	<update id="updateAccountFreezeAndUsableByAccountId">
+		update
+			account
+		set 
+			freeze_money = freeze_money - #{amount},
+			usable_money = usable_money + #{amount},
+			modify_time = #{currentTimeMillis}
+		where
+			account_id = #{accountId}
+	</update>
+	
+	<!-- //插入初审人信息和时间 -->
+	<update id="updateBankMoneyFlowFirstCheckByAndFirstTimeBymoneyFlowNo">
+		update
+			bank_money_flow
+		set
+			first_time = #{firstTime},
+			first_check_by = #{userId} 
+		where
+			money_flow_no = #{moneyFlowNo}
+	</update>
+	
+	<!-- //插入出金复审人信息和时间 -->
+	<update id="updateBankMoneyFlowSecondCheckByAndSecondTimeBymoneyFlowNo">
+		update
+			bank_money_flow
+		set
+			second_time = #{secondTime},
+			second_check_by = #{userId} 
+		where
+			money_flow_no = #{moneyFlowNo}
+	</update>
+	
+	
+	<insert id="addCashFlow" parameterType="com.fuzamei.pojo.po.WsjCashFlowPO">
+		insert into
+		cash_flow
+			(transaction_id,transaction_flow_id,enterprise_id,account_id,operator_id,bank_card_id,enterprise_name,amount,
+			state_id,status,create_time,end_time,review_time,manusl_automatic,type,cash_flow_hash)
+		values
+			(#{transactionId},#{transactionFlowId},#{enterpriseId},#{accountId},#{operatorId},#{bankCardId},#{enterpriseName},#{amount},#{stateId},#{status},
+			#{createTime},#{endTime},#{reviewTime},#{manuslAutomatic},#{type},#{cashFlowHash})
+	</insert>
+	
+	
+	<select id="findWindFirstCheckByState" parameterType="com.fuzamei.pojo.vo.WsjVo" resultType="com.fuzamei.pojo.dto.BillDTO">
+		select 
+			*
+		from
+			bill
+		<where> 
+			status = #{status}
+			<if test="enterpriseName != '' and enterpriseName != null">
+				and (bill_out_enterprise_name like CONCAT('%',#{enterpriseName},'%')
+				or bill_in_enterprise_name like CONCAT('%',#{enterpriseName},'%')
+				or bill_warrantor_name like CONCAT('%',#{enterpriseName},'%'))
+			</if>
+			<if test="startTime!=null and endTime!=null">
+				and e.authorize_time between #{startTime} and #{endTime}
+			</if>
+			order by
+				bill_create_time
+			limit
+				#{startPage},#{rowNum}
+		</where>
+	</select>
+	
+	
+	<select id="findWindFirstCheckByStateCount" parameterType="com.fuzamei.pojo.vo.WsjVo" resultType="Integer">
+		select 
+			count(*)
+		from
+			bill
+		<where> 
+			<if test="status != '' and status != null">
+				status = #{status}
+			</if>
+			<if test="enterpriseName != '' and enterpriseName != null">
+				and (bill_out_enterprise_name like CONCAT('%',#{enterpriseName},'%')
+				or bill_in_enterprise_name like CONCAT('%',#{enterpriseName},'%')
+				or bill_warrantor_name like CONCAT('%',#{enterpriseName},'%'))
+			</if>
+			<if test="startTime!=null and endTime!=null">
+				and e.authorize_time between #{startTime} and #{endTime}
+			</if>
+		</where>
+	</select>
+	
+	
+	<insert id="addBackAttachments" parameterType="com.fuzamei.pojo.bo.BackAttachmentBO">
+		insert into
+			back_attachment
+			(attachment_id,attachment_name,attachment_type,attachment_url,operator_id,create_time,update_time)
+		values
+		<foreach collection="list" item="backAttachmentBO" separator=",">
+			(#{backAttachmentBO.attachmentId},#{backAttachmentBO.attachmentName},#{backAttachmentBO.attachmentType},
+			#{backAttachmentBO.attachmentUrl},#{backAttachmentBO.operatorId},#{backAttachmentBO.createTime},
+			#{backAttachmentBO.updateTime})
+		</foreach>
+	</insert>
+	
+	<insert id="addBackAttachmentBills" parameterType="com.fuzamei.pojo.po.BackAttachmentBillPO">
+		insert into 
+			back_attachment_bill
+			(bill_id,attachment_id)
+		values
+		<foreach collection="list" item="backAttachmentBillPO" separator=",">
+			(#{backAttachmentBillPO.billId},#{backAttachmentBillPO.attachmentId})
+		</foreach>
+	</insert>
+	
+	<select id="findReportFileByBillId" parameterType="Integer" resultType="String" >
+		select
+			ba.attachment_url
+		from
+			back_attachment ba,back_attachment_bill bab
+		where
+			bab.bill_id = #{billId}
+		and
+			ba.attachment_id = bab.attachment_id
+	</select>
+	
+	<select id="findEnterpriseLimmit" parameterType="com.fuzamei.pojo.dto.EnterpriseDTO" resultType="com.fuzamei.pojo.po.EnterprisePO">
+		select
+			enterprise_id,enterprise_name,credit_line,consumed_loan,total_repayment
+		from
+			enterprise
+		<where>
+			<if test="enterpriseName != null  and enterpriseName != '' ">
+				enterprise_name like CONCAT('%',#{enterpriseName},'%') 
+			</if>
+		</where>
+		limit
+			#{startPage},#{rowNum}
+	</select>
+	
+	<select id="findEnterpriseLimitNum" resultType="Integer" parameterType="com.fuzamei.pojo.dto.EnterpriseDTO">
+		select
+			count(*)
+		from
+			enterprise
+		<where>
+			<if test="enterpriseName != null  and enterpriseName != '' ">
+				enterprise_name like CONCAT('%',#{enterpriseName},'%') 
+			</if>
+		</where>
+	</select>
+	
+	<update id="changeEnterpriseCreditLine">
+		update
+			enterprise
+		set
+			credit_line = #{creditLine}
+		where
+			enterprise_id = #{enterpriseId}
+	</update>
+	
+	<select id="findEnterpriseExist" resultType="Integer">
+		select
+			count(*)
+		from
+			enterprise
+		where
+			enterprise_id = #{enterpriseId}
+	</select>
+	
+	<select id="findBackUser" parameterType="com.fuzamei.pojo.vo.BackUserVO" resultType="com.fuzamei.pojo.po.BackUserPO">
+		select
+			*
+		from
+			back_users
+		<where>
+			<if test="username != null and username != '' ">
+				username like CONCAT('%',#{username},'%')
+			</if>
+		</where>
+		limit
+			#{startPage},#{rowNum}
+	</select>
+	
+	<select id="findBackUserNum" parameterType="com.fuzamei.pojo.vo.BackUserVO" resultType="Integer">
+		select
+			count(*)
+		from
+			back_users
+		<where>
+			<if test="username != null and username != '' ">
+				username like CONCAT('%',#{username},'%')
+			</if>
+		</where>
+	</select>
+	
+	<delete id="deleteBackUserRole" parameterType="Integer">
+		delete from
+			back_user_role
+		where
+			user_id = #{userId}
+	</delete>
+	
+	<insert id="addBackUserRole">
+		insert into
+			back_user_role
+			(user_id,role_id)
+		values
+		<foreach collection="roleIds" item="roleId" separator=",">
+			(#{userId},#{roleId})
+		</foreach>
+	</insert>
+	
+	<select id="findBackBackUserExist" parameterType="Integer" resultType="Integer">
+		select 
+			count(*)
+		from
+			back_users
+		where
+			user_id = #{userId}
+		and
+			is_delete = 1
+	</select>
+	
+	<select id="findBackRoleExist" parameterType="Integer" resultType="Integer">
+		select 
+			count(*)
+		from
+			back_role
+		where
+			role_id = #{roleId}
+	</select>
+	
+	<select id="findAllBackRole" resultType="com.fuzamei.pojo.dto.BackRoleDTO">
+		select
+			*
+		from
+			back_role
+	</select>
+	
+	<select id="findBackUserRole" parameterType="Integer" resultType="Integer">
+		select
+			role_id
+		from
+			back_user_role
+		where 
+			user_id = #{userId}
+	</select>
+	
+</mapper>
+
+
+
+
+
+
+

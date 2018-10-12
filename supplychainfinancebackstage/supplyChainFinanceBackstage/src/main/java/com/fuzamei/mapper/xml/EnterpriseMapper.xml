@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fuzamei.mapper.EnterpriseMapper">
+
+ <resultMap id="BaseResultMap" type="com.fuzamei.pojo.po.EnterprisePO">
+    <result column="enterprise_id" jdbcType="INTEGER" property="enterpriseId" />
+    <result column="enterprise_name" jdbcType="VARCHAR" property="enterpriseName" />
+  </resultMap>
+	
+	<!-- 企业名称模糊查询企业信息 -->
+	<select id="selectOneEnterpriseByName" parameterType="String" resultMap="BaseResultMap">
+		select enterprise_id,enterprise_name from enterprise where enterprise_name = #{enterprise_name}
+	</select>
+	  
+</mapper>

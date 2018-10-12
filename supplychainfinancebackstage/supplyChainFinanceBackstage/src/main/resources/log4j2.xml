@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration status="warn" monitorInterval="600">
+
+	<properties>
+		<!-- <property name="LOG_HOME">C:/logs</property> -->
+		<property name="LOG_HOME">/home/supplyChainFinanceBackstageLogs</property>
+		<property name="LOG_PATTERN">[%d{yyyy/MM/dd HH:mm:ss:SSS}] [%p] - %l%n%m%n%n</property>
+		<property name="CONSOLE_PATTERN">[%d{HH:mm:ss:SSS}] [%p] - %l - %m%n</property>
+	</properties>
+
+	<appenders>
+		<console name="Console" target="SYSTEM_OUT">
+			<PatternLayout pattern="${CONSOLE_PATTERN}" />
+		</console>
+
+		<RollingFile name="RollingFileInfo" fileName="${LOG_HOME}/info.log"
+			filePattern="${LOG_HOME}/YEAR-$${date:yyyy}/MONTH-$${date:MM}/DAY-$${date:dd}/info-%d{yyyy-MM-dd-HH}-%i.log">
+			<Filters>
+				<ThresholdFilter level="info" onMatch="NEUTRAL" onMismatchs="DENY" />
+				<ThresholdFilter level="warn" onMatch="DENY" onMismatch="ACCEPT" />
+			</Filters>
+			<PatternLayout pattern="${LOG_PATTERN}" />
+			<Policies>
+				<TimeBasedTriggeringPolicy />
+				<SizeBasedTriggeringPolicy size="100 MB" />
+			</Policies>
+			<DefaultRolloverStrategy max="20" />
+		</RollingFile>
+
+		<RollingFile name="RollingFileWarn" fileName="${LOG_HOME}/warn.log"
+			filePattern="${LOG_HOME}/YEAR-$${date:yyyy}/MONTH-$${date:MM}/DAY-$${date:dd}/warn-%d{yyyy-MM-dd-HH}-%i.log">
+			<Filters>
+				<ThresholdFilter level="warn" onMatch="NEUTRAL" onMismatch="DENY" />
+				<ThresholdFilter level="error" onMatch="DENY" onMismatch="ACCEPT" />
+			</Filters>
+			<PatternLayout pattern="${LOG_PATTERN}" />
+			<Policies>
+				<TimeBasedTriggeringPolicy />
+				<SizeBasedTriggeringPolicy size="100 MB" />
+			</Policies>
+			<DefaultRolloverStrategy max="20" />
+		</RollingFile>
+
+		<RollingFile name="RollingFileError" fileName="${LOG_HOME}/error.log"
+			filePattern="${LOG_HOME}/YEAR-$${date:yyyy}/MONTH-$${date:MM}/DAY-$${date:dd}/error-%d{yyyy-MM-dd-HH}-%i.log">
+			<Filters>
+				<ThresholdFilter level="error" onMatch="NEUTRAL" onMismatch="DENY" />
+				<ThresholdFilter level="fatal" onMatch="DENY" onMismatch="ACCEPT" />
+			</Filters>
+			<PatternLayout pattern="${LOG_PATTERN}" />
+			<Policies>
+				<TimeBasedTriggeringPolicy />
+				<SizeBasedTriggeringPolicy size="100 MB" />
+			</Policies>
+			<DefaultRolloverStrategy max="20" />
+		</RollingFile>
+	</appenders>
+
+	<loggers>
+		<logger name="org.springframework" level="info" additivity="false"></logger>
+		<logger name="org.mybatis" level="info" additivity="false"></logger>
+		<root level="info">
+			<appender-ref ref="Console" />
+			<appender-ref ref="RollingFileInfo" />
+			<appender-ref ref="RollingFileWarn" />
+			<appender-ref ref="RollingFileError" />
+		</root>
+	</loggers>
+</configuration>

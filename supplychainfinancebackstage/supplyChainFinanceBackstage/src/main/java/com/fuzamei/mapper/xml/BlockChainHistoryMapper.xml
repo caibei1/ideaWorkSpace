@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace = "com.fuzamei.mapper.BlockChainHistoryMapper">
+	
+	<!-- 查询历史记录 -->
+	<select id="queryHistory" parameterType="BlockChainHistoryBO" resultType="BlockChainHistoryVO">
+		select
+			bu.person_name as operator,
+			bbh.operation_type,
+			bbh.create_time
+		from
+			back_blockchain_history bbh
+		left join 
+			back_users bu
+		on
+			bbh.operator_id=bu.user_id
+		<where>
+			<if test="operationTypeId!=null">
+				bbh.operation_type_id=#{operationTypeId}
+			</if>
+			<if test="startTime!=null and endTime!=null">
+				and bbh.create_time between #{startTime} and #{endTime}
+			</if>
+		</where>
+		order by
+			bbh.create_time desc
+		limit
+			#{startPage},#{rowNum}
+	</select>
+	
+	<!-- 查询记录条数 -->
+	<select id="queryHistoryCount" parameterType="BlockChainHistoryBO" resultType="int">
+		select
+			count(*)
+		from
+			back_blockchain_history
+		<where>
+			<if test="operationTypeId!=null">
+				operation_type_id=#{operationTypeId}
+			</if>
+			<if test="startTime!=null and endTime!=null">
+				and create_time between #{startTime} and #{endTime}
+			</if>
+		</where>
+	</select>
+	
+</mapper>

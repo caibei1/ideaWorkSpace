@@ -1,0 +1,1026 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fuzamei.mapper.FinanceManageMapper">
+	<select id="selectAllEnterpriseName" resultType="com.fuzamei.pojo.po.EnterprisePO">
+		select
+		enterprise_id,enterprise_name from enterprise
+	</select>
+	<!--财务管理查询入金的待审核的列表 state 1是待审核 , manusl_automatic 1代表人工 2代表自动, 13是已划拨 operation_type 1代表入金 2代表出金 -->
+	<select id="queryGolden" parameterType="com.fuzamei.pojo.bo.FinanceBO" resultType="com.fuzamei.pojo.po.FinanceBankPO">
+		 select
+				money_flow_no,
+				enterprise_name,
+				enterprise_id,
+				amount,
+				create_time,
+				bank_card
+		  from
+		       (select * from bank_money_flow where state=1 or state=13) bmf
+		<where>
+			   operation_type=1
+			<if test="enterpriseName!=null and ''!=enterpriseName">
+				and enterprise_name like "%"#{enterpriseName}"%"
+			</if>
+		</where>
+		order by 
+				create_time desc
+		 limit 
+				#{startPage},#{rowNum}
+	</select>
+
+	<!--财务管理查询入金的待审核的列表总条数 state 1是待审核 , manusl_automatic 1代表人工 2代表自动, operation_type 1代表入金 2代表出金 -->
+	<select id="queryGoldenCount" parameterType="com.fuzamei.pojo.bo.FinanceBO" resultType="int">
+		select count(*) from (
+		  select
+			money_flow_no,
+			enterprise_name,
+			enterprise_id,
+			amount,
+			create_time,
+			bank_card
+		from
+		    (select * from bank_money_flow where state=1 or state=13) bmf
+		<where>
+			operation_type=1
+			<if test="enterpriseName!=null and ''!=enterpriseName">
+				and enterprise_name like "%"#{enterpriseName}"%"
+			</if>
+		</where>)temp
+		order by 
+		       create_time desc
+		limit 
+		       #{startPage},#{rowNum}
+	</select>
+
+	<!--查询入金已审核的列表 state 1是待审核 2是入金通过,3是入金拒绝 manusl_automatic 1代表人工 2代表自动, operation_type 1代表入金 2代表出金 16退款失败 -->
+	<select id="queryGoldenOkCheck" parameterType="com.fuzamei.pojo.bo.FinanceBO" resultType="com.fuzamei.pojo.po.FinanceBankPO">
+		select
+			bmf.money_flow_no,
+			bmf.enterprise_name,
+			bmf.amount,
+			bmf.create_time,
+			bmf.end_time,
+			bmf.bank_card,
+			s.state_name
+		from
+			(select * from bank_money_flow where state=2 or state=3 or state=19) bmf
+		left join
+			back_state s
+		on
+			bmf.state=s.state_id
+		<where>
+			operation_type=1
+			<if test="enterpriseName!=null and ''!=enterpriseName">
+				and enterprise_name like "%"#{enterpriseName}"%"
+			</if>
+		</where>
+		  order by
+			 create_time desc
+		  limit 
+			#{startPage},#{rowNum}
+	</select>
+
+	<!--查询入金已审核的列表的总条数 state 1是待审核 2是入金通过, manusl_automatic 1代表人工 2代表自动, operation_type 1代表入金 2代表出金 16退款失败 -->
+	<select id="queryGoldenOkCheckCount" parameterType="com.fuzamei.pojo.bo.FinanceBO" resultType="int">
+		select count(*) from (
+		  select
+				bmf.money_flow_no,
+				bmf.enterprise_name,
+				bmf.amount,
+				bmf.create_time,
+				bmf.end_time,
+				bmf.bank_card,
+				s.state_name
+		 from
+			(select * from bank_money_flow where state=2 or state=3 or state=19) bmf
+		left join
+				back_state s
+			on
+				bmf.state=s.state_id
+		<where>
+			    operation_type=1
+			<if test="enterpriseName!=null and ''!=enterpriseName">
+				and enterprise_name like "%"#{enterpriseName}"%"
+			</if>
+		</where>)temp
+		order by
+		       create_time desc
+		limit 
+		       #{startPage},#{rowNum}
+	</select>
+
+	<!-- 查询入金 -->
+	<select id="querybankMoneyFlow" parameterType="FinanceBankPO" resultType="FinanceBankPO">
+		select
+			b.money_flow_no,
+			b.enterprise_name,
+			b.bank_transaction_no as tranflow,
+			bc.bank_name as accnoname,
+			b.enterprise_id,
+			b.first_time,
+			b.memorandum,
+			b.amount,
+			b.create_time,
+			b.bank_card as accno,
+			b.serialnumber,
+			b.operation_type,
+			b.state
+		from
+			bank_money_flow b 
+		left join 
+			bank_card bc 
+		on 
+			b.bank_card=bc.bank_card_id
+		where 
+			money_flow_no=#{moneyFlowNo}
+	</select>
+
+	<!--【入金】根据 企业的id查询企业下对应的账户的总资产和可用余额（1对1） -->
+	<select id="queryAccountTotalAssetByEnterpriseId" parameterType="FinanceBankPO" resultType="FinanceBankPO">
+		select
+		  	 a.total_asset,
+	   	     a.usable_money
+		from
+		 	 account a
+		left join
+		 	 enterprise_account qz
+		on
+		 	 a.account_id =qz.account_id
+		left join
+		  	bank_money_flow b
+		on
+			b.enterprise_id=qz.enterprise_id
+		where
+			b.money_flow_no=#{moneyFlowNo}  
+	</select>
+
+	<!--出金第一次审核做拒绝操作 修改冻结金额和可用金额 -->
+	<select id="queryAccountTotalAssetByEnterpriseId2" parameterType="FinanceBankPO" resultType="FinanceBankPO">
+		select
+			  a.total_asset,
+			  a.freeze_money,
+			  a.usable_money
+		from 
+		      account a
+	   left join 
+	          enterprise_account qz 
+	     on   
+	          a.account_id =qz.account_id
+	   left join
+		      bank_money_flow q 
+		 on   
+		      q.enterprise_id=qz.enterprise_id
+		where 
+		      q.money_flow_no=#{moneyFlowNo}<!-- 原先是根据企业id -->
+	</select>
+
+	<!-- 【入金 】当入金审核得时候，财务点击同意修改现金流表里得状态改为（入金通过） 同时给账户表得【总资产】加上去 和 可用金额（充值金额）也加上起来 -->
+	<update id="updateAccountSumMoney" parameterType="FinanceBankPO">
+		update 
+		        account a 
+		inner join 
+				enterprise_account qz 
+		  on    
+		        a.account_id=qz.account_id 
+		inner join 
+				bank_money_flow q 
+		  on     
+		        qz.enterprise_id = q.enterprise_id
+		  set 
+		        total_asset=#{totalAsset},
+		        usable_money=#{usableMoney} 
+		 where
+		        q.enterprise_id =#{enterpriseId}
+	</update>
+
+	<!-- ***************************************************以上所有入金操作*************************************************************************** -->
+	<!-- ***************************************************以下出金所有操作******************************************************** 
+		****************** -->
+
+	<!--财务管理查看出金的待审核列表 state 1是待审核 , manusl_automatic 1代表人工 2代表自动, operation_type 
+		1代表入金 2代表出金 --><!--出金是查人工和自动2种的 -->
+	<select id="queryOutGold" parameterType="com.fuzamei.pojo.bo.FinanceBO" resultType="com.fuzamei.pojo.po.FinanceBankPO">
+		select
+				money_flow_no,
+				enterprise_name,
+				enterprise_id,
+				create_time,
+				amount
+		  from
+		        bank_money_flow
+		<where>
+			    operation_type=2 and state=1
+			<if test="enterpriseName!=null and ''!=enterpriseName">
+				and enterprise_name like "%"#{enterpriseName}"%"
+			</if>
+		</where>
+		order by 
+		       create_time desc
+		limit 
+		       #{startPage},#{rowNum}
+	</select>
+
+	<!--财务管理查看出金的待审核列表总条数 state 1是待审核 , manusl_automatic 1代表人工 2代表自动, operation_type 
+		1代表入金 2代表出金 --><!--出金是查人工和自动2种的 -->
+	<select id="queryOutGoldCount" parameterType="com.fuzamei.pojo.bo.FinanceBO" resultType="int">
+		select count(*) from bank_money_flow
+		<where>
+			operation_type=2 and state=1
+			<if test="enterpriseName!=null and ''!=enterpriseName">
+				and enterprise_name like "%"#{enterpriseName}"%"
+			</if>
+		</where>
+		 order by 
+		        create_time desc
+		 limit 
+		        #{startPage},#{rowNum}
+	</select>
+
+	<!-- 出金根据流水编号查询 -->
+	<select id="querybankMoneyFlowOutGolden" parameterType="FinanceBankPO" resultType="FinanceBankPO">
+		select  distinct
+				b.money_flow_no,
+				b.enterprise_name,
+				b.enterprise_id,
+				b.bank_name as accnoname,<!--大账户银行名称 -->
+				b.amount,  <!--提现金额 as money -->
+				b.bank_card  as accno,<!--银行卡号 -->
+				b.create_time,
+				b.first_time,
+				b.memorandum as useof ,<!--备注 -->
+				b.state,
+				b.create_by as pevvaccname,<!-- 账号名称 -->
+				ba.account_name ,
+				ba.bank_name as pecvopenaccdept <!--开户机构  -->
+		  from 
+				bank_money_flow b  
+		left  join  bank_card ba on b.bank_card=ba.bank_card_id  where  b.money_flow_no=#{moneyFlowNo}
+		<!-- left join 
+				enterprise q 
+		   on	
+		   		b.enterprise_id=q.enterprise_id
+		left join
+		 	    enterprise_account ea 
+		   on   
+		        ea.enterprise_id=q.enterprise_id
+		left join 
+		        account z 
+		   on   
+		        z.account_id=ea.account_id
+		left join 
+		        account_bank ab 
+		   on 
+		        ab.account_id=z.account_id
+		left join 
+				bank_card ba 
+		   on 
+		        ba.bank_card_id=b.bank_card
+		where
+		        b.money_flow_no=#{moneyFlowNo}先注释 -->
+	</select>
+
+	<!--财务管理查看出金已审核的列表 state 1是待审核 5是初审通过, manusl_automatic 1代表人工 2代表自动, operation_type 
+		1代表入金 2代表出金 --><!--出金是查人工和自动2种的 -->
+	<select id="queryOutGoldOkCheck" parameterType="com.fuzamei.pojo.bo.FinanceBO" resultType="com.fuzamei.pojo.po.FinanceBankPO">
+		select
+				bmf.money_flow_no,
+				bmf.enterprise_name,
+				bmf.create_time,
+				bmf.amount,
+				bmf.first_time,
+				s.state_name
+		from
+		        (select * from bank_money_flow where state=5 or state=6) bmf
+		left join
+		        back_state s
+		  on
+		        bmf.state=s.state_id
+		<where>
+			operation_type=2
+			<if test="enterpriseName!=null and ''!=enterpriseName">
+				and enterprise_name like "%"#{enterpriseName}"%"
+			</if>
+		</where>
+		order by 
+		       create_time desc
+		limit
+               #{startPage},#{rowNum}
+	</select>
+
+	<!--财务管理查看出金已审核的列表总条数 state 1是待审核 5是初审通过, manusl_automatic 1代表人工 2代表自动, operation_type 1代表入金 2代表出金 --><!--出金是查人工和自动2种的 -->
+	<select id="queryOutGoldOkCheckCount" parameterType="com.fuzamei.pojo.bo.FinanceBO" resultType="int">
+		select count(*) from  bank_money_flow
+		<where>
+			operation_type=2 and state in(5,6)
+			<if test="enterpriseName!=null and ''!=enterpriseName">
+				and enterprise_name like "%"#{enterpriseName}"%"
+			</if>
+		</where>
+		order by 
+			 create_time desc
+		limit 
+		     #{startPage},#{rowNum}
+	</select>
+
+	<!--*****************************************以下是出金 第二次 审核操作********************************************************************************** -->
+
+	<!--【财务主管】管理出金 待复审的列表 state 1是待审核 5是初审通过, 6是初审拒绝 ,7是复审通过, manusl_automatic 
+		1代表人工 2代表自动, operation_type 1代表入金 2代表出金 --><!--出金是查人工和自动2种的 -->
+	<select id="queryToReview" parameterType="com.fuzamei.pojo.bo.FinanceBO" resultType="com.fuzamei.pojo.po.FinanceBankPO">
+		select
+				bmf.money_flow_no,
+				bmf.enterprise_name,
+				bmf.enterprise_id,
+				bmf.amount,
+				bmf.first_time,
+				bu.person_name as chuShenName
+		from
+				bank_money_flow bmf
+		left join 
+				back_users bu
+		 on 
+				bmf.first_check_by=bu.user_id
+		<where>
+			   operation_type=2 and state=5
+			<if test="enterpriseName!=null and ''!=enterpriseName">
+				and enterprise_name like "%"#{enterpriseName}"%"
+			</if>
+		</where>
+		order by
+				first_time desc
+		  limit 
+				#{startPage},#{rowNum}
+	</select>
+
+	<!--【财务主管】管理出金 待复审的列表总条数 state 1是待审核 5是初审通过, 6是初审拒绝 ,7是复审通过, manusl_automatic 1代表人工 2代表自动, operation_type 1代表入金 2代表出金 --><!--出金是查人工和自动2种的 -->
+	<select id="queryToReviewCount" parameterType="com.fuzamei.pojo.bo.FinanceBO" resultType="int">
+		select count(*) from (
+		 select
+				bmf.money_flow_no,
+				bmf.enterprise_name,
+				bmf.enterprise_id,
+				bmf.amount,
+				bmf.first_time,
+				bu.person_name as chuShenName
+		 from
+				bank_money_flow bmf
+		 left join
+			    back_users bu
+		 on 
+				bmf.first_check_by=bu.user_id
+		<where>
+			    operation_type=2 and state=5
+			<if test="enterpriseName!=null and ''!=enterpriseName">
+				and enterprise_name like "%"#{enterpriseName}"%"
+			</if>
+		</where>)temp
+		order by 
+		       first_time desc
+		limit 
+		       #{startPage},#{rowNum}
+	</select>
+
+
+	<!--【财务主管】查看出金已复审的列表state 1是待审核 5是初审通过, 6是初审拒绝 ,7是复审通过, manusl_automatic 1代表人工 2代表自动, operation_type 1代表入金 2代表出金 --><!--出金是查人工和自动2种的 -->
+	<select id="queryHaveReview" parameterType="com.fuzamei.pojo.bo.FinanceBO" resultType="com.fuzamei.pojo.po.FinanceBankPO">
+		select
+				bmf.money_flow_no,
+				bmf.enterprise_name,
+				bmf.amount,
+				bmf.first_time,
+				bu2.person_name as chuShenName,
+				bu3.person_name as fuShenName,
+				bmf.second_time,
+				s.state_name
+		from
+				(select * from bank_money_flow where state=9 or state=8 or state=7 ) bmf
+		left join 
+				back_users bu2
+		  on 	 
+				bmf.first_check_by=bu2.user_id
+		left join 
+				back_users bu3
+		  on
+				bmf.second_check_by=bu3.user_id
+		left join 
+				back_state s
+		  on
+		 		bmf.state=s.state_id
+		<where>
+			bmf.operation_type=2
+			<if test="enterpriseName!=null and ''!=enterpriseName">
+				and enterprise_name like "%"#{enterpriseName}"%"
+			</if>
+		</where>
+		order by 
+		       bmf.second_time desc
+		limit 
+		       #{startPage},#{rowNum}
+	</select>
+
+	<!--【财务主管】查看出金已复审的列表的总条数 state 1是待审核 5是初审通过, 6是初审拒绝 ,7是复审通过, manusl_automatic 1代表人工 2代表自动, operation_type 1代表入金 2代表出金 --><!--出金是查人工和自动2种的 -->
+	<select id="queryHaveReviewCount" parameterType="com.fuzamei.pojo.bo.FinanceBO" resultType="int">
+		select count(*) from (
+		select
+				bmf.money_flow_no,
+				bmf.enterprise_name,
+				bmf.amount,
+				bmf.first_time,
+				bu2.person_name as chuShenName,
+				bu3.person_name as fuShenName,
+				bmf.second_time,
+				s.state_name
+		from
+				(select * from bank_money_flow where state=9 or state=8 or state=7) bmf
+		left join 
+				back_users bu2
+		  on 
+				bmf.first_check_by=bu2.user_id
+		left join 
+				back_users bu3
+		  on 
+				bmf.second_check_by=bu3.user_id
+		left join
+		        back_state s
+		  on 
+		        bmf.state=s.state_id
+		<where>
+			bmf.operation_type=2
+			<if test="enterpriseName!=null and ''!=enterpriseName">
+				and enterprise_name like "%"#{enterpriseName}"%"
+			</if>
+		</where>)temp
+		order by 
+		      second_time desc
+		limit  
+		      #{startPage},#{rowNum}
+	</select>
+
+	<!--【财务主管】复审点击同意操作 根据企业id查询账户总资产和冻结的金额 () -->
+	<select id="queryAccountTotalAssetOrFreezeMoneyByEnterpriseId" parameterType="FinanceBankPO" resultType="FinanceBankPO">
+		select
+				a.total_asset,
+				a.freeze_money,
+				a.usable_money
+		from 
+				bank_money_flow q <!--改 -->
+		left join 
+				enterprise_account qz
+		 on 
+				q.enterprise_id=qz.enterprise_id
+		left join 
+				account a
+		 on 
+				qz.account_id=a.account_id
+		where 
+				q.money_flow_no=#{moneyFlowNo}<!-- 原是根据企业id  备：企业id有重的 -->
+	</select>
+
+	<!-- 第一次出金审核做拒绝操作 修改冻结金额和可用金额 --><!-- 可以分几次提走的 -->
+	<update id="updateFreezeMoneyUsableMoney" parameterType="FinanceBankPO">
+		update
+		          account a 
+	    inner join 
+	    		  enterprise_account qz 
+	      on
+		          a.account_id=qz.account_id 
+		inner join 
+		          bank_money_flow q 
+		  on
+		          qz.enterprise_id = q.enterprise_id
+		  set     
+		          a.freeze_money=#{freezeMoney},
+		          a.usable_money=#{usableMoney} 
+		 where
+				  q.enterprise_id =#{enterpriseId}
+	</update>
+
+	<!--出金第二次复审【财务主管复审点击同意】  -->
+	<update id="approvebankMoneyFlowOutGoldenToReviewAccountMoney" parameterType="FinanceBankPO">
+		update  
+		         account a 
+	    inner join 
+	             enterprise_account qz 
+	       on
+		         a.account_id=qz.account_id 
+		inner join 
+		         bank_money_flow q 
+		   on
+		         qz.enterprise_id = q.enterprise_id
+		  set      
+		         a.total_asset=#{totalAsset},
+		         a.freeze_money=#{freezeMoney} 
+		 where
+				 q.enterprise_id =#{enterpriseId}
+	</update>
+
+	<!--出金第二次复审 失败后 在把账户表 冻结金额回过去 账户总资产和可用金额加起来,总资产也加起来 -->
+	<update id="approvebankMoneyFlowOutGoldenToReviewAccountMoney2" parameterType="FinanceBankPO">
+		update  
+		         account a 
+	    inner join 
+	             enterprise_account qz
+	      on
+		         a.account_id=qz.account_id 
+		inner join 
+		         bank_money_flow q 
+		  on
+		         qz.enterprise_id = q.enterprise_id
+		 set 
+		         a.total_asset=#{totalAsset},
+		         a.usable_money=#{usableMoney},
+		         a.freeze_money=#{freezeMoney}
+		 where
+		         q.enterprise_id =#{enterpriseId}
+	</update>
+
+	<!--*************************************以下是入金 待划拨*和已划拨*********************************************************** -->
+	<!-- 入金记录表 【待划拨】列表页面 state=11代表待划拨 operation_type=1是入金  -->
+	<!--下面这个代替上面那个方法 -->
+	<select id="queryAwaitTransfera" parameterType="com.fuzamei.pojo.bo.FinanceBO" resultType="com.fuzamei.pojo.po.FinanceBankPO">
+		select
+			bmf.money_flow_no,
+			bmf.create_by,	<!--法人名称 -->
+			bmf.memorandum,
+			bmf.enterprise_id,
+			bmf.enterprise_name,
+			bmf.amount,
+			bmf.create_time,
+			bmf.bank_card,
+			bc.bank_name
+		from
+			bank_money_flow bmf
+		left join
+			bank_card bc
+		on
+			bmf.bank_card=bc.bank_card_id
+		<where>
+			bmf.operation_type=1 and bmf.state=11
+			<if test="startTime!=null and endTime!=null">
+				and bmf.create_time between #{startTime} and #{endTime}
+			</if>
+		</where>
+		order by 
+			create_time desc
+		limit 
+			#{startPage},#{rowNum}
+	</select>
+
+	<!--(入金初审)入金记录表待划拨的总条数 -->
+	<select id="queryAwaitTransferaCount" resultType="int">
+		select
+			count(*)
+		from
+			bank_money_flow
+		<where>
+			operation_type=1 and state=11
+			<if test="startTime!=null and endTime!=null">
+				and create_time between #{startTime} and #{endTime}
+			</if>
+		</where>
+		order by 
+			create_time desc
+		limit 
+			#{startPage},#{rowNum}
+	</select>
+
+	<!--入金记录表 【已划拨】列表页面 state=13代表已划拨 state=12代表已退款 operation_type=1是入金 manusl_automatic=1 人工入账 -->
+	<select id="queryHasBeenAllocated" parameterType="com.fuzamei.pojo.bo.FinanceBO" resultType="com.fuzamei.pojo.po.FinanceBankPO">
+		select
+				bmf.money_flow_no,
+				bmf.create_by,<!--法人名称 -->
+				bmf.transfer_enterprise,
+				bmf.amount,
+				bmf.create_time,
+				bmf.end_time,
+				bmf.bank_card,
+				s.state_name
+		from
+		        (select * from bank_money_flow where state=13 ) bmf
+		left join
+		        back_state s on s.state_id=bmf.state
+		<where>
+			    bmf.operation_type=1
+			<if test="startTime!=null and endTime!=null">
+				and bmf.create_time between #{startTime} and #{endTime}
+			</if>
+		</where>
+		order by 
+		        create_time desc
+		 limit 
+		        #{startPage},#{rowNum}
+	</select>
+
+	<!--入金记录表 【已划拨】列表总条数 state=13代表已划拨 operation_type=1是入金 manusl_automatic=1 人工入账 -->
+	<select id="queryHasBeenAllocatedCount" parameterType="com.fuzamei.pojo.bo.FinanceBO" resultType="int">
+		select count(*) from (
+		 select
+				bmf.money_flow_no,
+				bmf.create_by,
+				bmf.transfer_enterprise,
+				bmf.amount,
+				bmf.create_time,
+				bmf.end_time,
+				bmf.bank_card,
+				s.state_name
+		from
+				(select * from bank_money_flow where state=13 ) bmf
+		left join
+				back_state s on s.state_id=bmf.state
+		<where>
+				bmf.operation_type=1
+			<if test="startTime!=null and endTime!=null">
+				and bmf.create_time between #{startTime} and #{endTime}
+			</if>
+		</where>)temp
+		order by 
+		        create_time desc
+		limit 
+		        #{startPage},#{rowNum}
+	</select>
+
+	<!--退款审核 -->
+	<!-- 查询状态为【退款中】的信息 待审核退款的列表 -->
+	<select id="queryToAuditARefund" parameterType="com.fuzamei.pojo.bo.FinanceBO"  resultType="com.fuzamei.pojo.po.FinanceBankPO">
+		select
+			bmf.money_flow_no,
+			bmf.bank_transaction_no,
+			bmf.create_by,
+			bmf.memorandum,
+			bmf.amount,
+			bmf.create_time,
+			bmf.bank_card,
+			bc.bank_name
+		from 
+			bank_money_flow bmf
+		left join 
+			bank_card bc 
+		on 
+			bmf.bank_card=bc.bank_card_id
+		<where>
+			bmf.operation_type=1 and bmf.state=14
+			<if test="startTime!=null and endTime!=null">
+				and bmf.create_time between #{startTime} and #{endTime}
+			</if>
+		</where>
+		order by 
+			create_time desc
+		limit 
+			#{startPage},#{rowNum}
+	</select>
+
+	<!-- 查询状态为【退款中】的信息 待审核退款的列表 总条数 -->
+	<select id="queryToAuditARefundCount" parameterType="com.fuzamei.pojo.bo.FinanceBO"
+		resultType="int">
+		select 
+			count(*) 
+		from 
+			bank_money_flow
+		<where>
+			operation_type=1 and state=14
+			<if test="startTime!=null and endTime!=null">
+				and create_time between #{startTime} and #{endTime}
+			</if>
+		</where>
+		order by 
+			create_time desc
+		limit 
+			#{startPage},#{rowNum}
+	</select>
+
+	<!--查询已审核的退款列表 12代表已退款的 ， operation_type=1 还是查入金类型的 12代表已退款的 ，15代表处理中 16是退款失败 -->
+	<select id="queryhasARefund" parameterType="com.fuzamei.pojo.bo.FinanceBO" resultType="com.fuzamei.pojo.po.FinanceBankPO">
+		select
+				bmf.money_flow_no,
+				bmf.create_by,
+				bmf.memorandum,
+				bmf.amount,
+				bmf.create_time,
+				bmf.end_time,
+				bmf.bank_card,
+				s.state_name
+		from
+		        (select * from bank_money_flow where state=12  or state=15) bmf
+		left join
+				back_state s on s.state_id=bmf.state
+		<where>
+				bmf.operation_type=1
+			<if test="startTime!=null and endTime!=null">
+				and bmf.create_time between #{startTime} and #{endTime}
+			</if>
+		</where>
+		order by 
+				create_time desc
+		 limit 
+				#{startPage},#{rowNum}
+	</select>
+
+	<!--查询已审核的退款列表总条数 , 12代表已退款的 ,15代表处理中 16是退款失败 -->
+	<select id="queryhasARefundCount" parameterType="com.fuzamei.pojo.bo.FinanceBO" resultType="int">
+		select count(*) from (
+		 select
+				bmf.money_flow_no,
+				bmf.create_by,
+				bmf.memorandum,
+				bmf.amount,
+				bmf.create_time,
+				bmf.end_time,
+				bmf.bank_card,
+				s.state_name
+		from
+				(select * from bank_money_flow where state=12  or state=15) bmf
+		left join
+				back_state s on s.state_id=bmf.state
+		<where>
+				bmf.operation_type=1
+			<if test="startTime!=null and endTime!=null">
+				and bmf.create_time between #{startTime} and #{endTime}
+			</if>
+		</where>)temp
+		order by
+				 create_time desc
+		  limit
+				 #{startPage},#{rowNum}
+	</select>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	<!--******************************************以下是导出Excel的操作************************************************************ -->
+	<!--查询入金待审核的数据 导出Excel -->
+	<select id="selectGoldenExportExcel" resultType="java.util.LinkedHashMap">
+		select
+				money_flow_no,
+				enterprise_name,
+				amount,
+				create_time,
+				bank_card
+		from
+				(select * from bank_money_flow where state=1 or state=13) bmf
+		where
+				operation_type=1
+	</select>
+
+	<!--查询入金已审核的数据 导出Excel -->
+	<select id="selectGoldenExportExcelCheckOk" resultType="java.util.LinkedHashMap">
+		select
+				bmf.money_flow_no,
+				bmf.enterprise_name,
+				bmf.amount,
+				bmf.create_time,
+				bmf.end_time,
+				bmf.bank_card,
+				s.state_name
+		from
+				(select * from bank_money_flow where state=2 or state=3 or state=19) bmf
+		left join
+				back_state s
+		 on
+				bmf.state=s.state_id
+		 where
+				operation_type=1
+	</select>
+
+	<!--查询出金待审核的数据 导出Excel -->
+	<select id="selectGoldenOutExportExcel2" resultType="java.util.LinkedHashMap">
+		select
+				money_flow_no,
+				enterprise_name,
+				create_time,
+				amount
+		from
+				bank_money_flow
+		where
+				operation_type=2 and state=1
+	</select>
+
+	<!--查询出金已审核的数据 导出Excel -->
+	<select id="selectGoldenOutExportExcelOkCheck2" resultType="java.util.LinkedHashMap">
+		select
+				bmf.money_flow_no,
+				bmf.enterprise_name,
+				bmf.create_time,
+				bmf.amount,
+				bmf.first_time,
+				s.state_name
+		from
+				(select * from bank_money_flow where state=5 or state=6) bmf
+		left join
+				back_state s
+		  on
+				bmf.state=s.state_id
+		 where
+				operation_type=2
+	</select>
+
+	<!--查询出金待复审的数据 导出Excel -->
+	<select id="selectOutGlodenToReview" resultType="java.util.LinkedHashMap">
+		select
+				bmf.money_flow_no,
+				bmf.enterprise_name,
+				bmf.amount,
+				bmf.first_time,
+				bu.person_name
+		from
+				bank_money_flow bmf
+		left join 
+				back_users bu
+		 on
+			    bmf.first_check_by=bu.user_id
+		 where
+				operation_type=2 and state=5
+	</select>
+
+	<!--查询出金已复审的数据 导出Excel -->
+	<select id="selectOutGlodenToReviewOkCheck" resultType="java.util.LinkedHashMap">
+		select
+				bmf.money_flow_no,
+				bmf.enterprise_name,
+				bmf.amount,
+				bmf.first_time,
+				bu2.person_name as chuShenName,
+				bu3.person_name as fuShenName,
+				bmf.second_time,
+				s.state_name
+		from
+				(select * from bank_money_flow where state=9 or state=8 or state=7) bmf
+		left join 
+				back_users bu2
+		 on
+				bmf.first_check_by=bu2.user_id
+		left join 
+				back_users bu3
+		 on 
+				bmf.second_check_by=bu3.user_id
+		left join
+				back_state s
+		 on 
+				bmf.state=s.state_id
+		where
+				bmf.operation_type=2
+	</select>
+	<!--查询入金管理 待划拨的 入账记录表 导出Excel -->
+	<select id="selectAwaitTransfera" resultType="java.util.LinkedHashMap">
+		select
+				bmf.money_flow_no,
+				bmf.create_by,
+				bmf.memorandum,
+				bmf.amount,
+				bmf.create_time,
+				bmf.bank_card
+		from
+				bank_money_flow bmf 
+		where
+				bmf.operation_type=1 and bmf.state=11
+	</select>
+
+	<!--查询入金管理 已划拨的 入账记录表 导出Excel -->
+	<select id="selectHasBeenAllocated" resultType="java.util.LinkedHashMap">
+		select
+				bmf.money_flow_no,
+				bmf.create_by,
+				bmf.transfer_enterprise,
+				bmf.amount,
+				bmf.create_time,
+				bmf.end_time,
+				bmf.bank_card,
+				s.state_name
+		from
+				(select * from bank_money_flow where state=13) bmf
+		left join
+		        back_state s 
+		 on 
+		        s.state_id=bmf.state
+		where
+		        bmf.operation_type=1
+	</select>
+
+	<!--////////////////////////////////////////////////////////////////////////////////////////////////////////// -->
+	<!--查询银行卡号和请求id （serialnumber）升序 --><!--入金退款同意和入金拒绝（同用一个接口方法）用一个定时器查询状态是15的等待处理   19 是处理中-->
+	<select id="selectSerialnumberBankCard" resultType="FinanceBankPO">
+		select serialnumber,bank_card,state from bank_money_flow where state in (15,19) and operation_type=1 order by create_time asc
+	</select>
+
+	<!-- 出金复审同意调接口 查询状态为7的复审通过 用一个定时器查询状态是7的 -->
+	<select id="selectOutGoldenAgree" resultType="FinanceBankPO">
+		select money_flow_no,enterprise_id,enterprise_name,serialnumber,bank_card,amount,uid from bank_money_flow where state=7 and operation_type=2 order by first_time asc
+	</select>
+
+	<!--（划拨时候做判断用）根据传来的企业名称查询是否有这个企业名称 -->
+	<select id="queryEnterpriseNameBymoneyFlowNo" parameterType="FinanceBankPO" resultType="EnterpriseDTO">
+		select 
+		    enterprise_id,
+			enterprise_name 
+		from 
+			enterprise  
+		where
+			enterprise_name=#{enterpriseName}
+	</select>
+	
+	<!--入金出金审核拒绝后给cash_flow表也插进去一条数据 -->
+	<insert id="insertGoldenGoCashFlow" parameterType="com.fuzamei.pojo.po.FinanceBankPO">
+		insert into
+		  cash_flow(transaction_flow_id,
+					enterprise_id,
+					account_id,
+					bank_card_id,
+					enterprise_name,
+					amount,
+					create_time,
+					end_time,
+					type,
+					status)
+		values
+			(#{moneyFlowNos},
+			#{enterpriseId},
+			#{accountId},
+			#{bankCard},
+			#{enterpriseName},
+			#{amount},
+			#{createTime},
+			#{endTime},
+			#{operationType},
+			#{state})
+	</insert>
+	
+	<!--以下Sql是宋东洋要我这边出金，入金，成功后 给他cash_flow表插入的数据 -->
+	<!--入金出金审核同意成功后给cash_flow表也插进去一条数据 -->
+	<insert id="insertGoldenGoCashFlowSucces" parameterType="com.fuzamei.pojo.po.FinanceBankPO">
+		insert into
+		  cash_flow(
+		           transaction_flow_id, 
+					enterprise_id,
+					account_id,
+					bank_card_id,
+					enterprise_name,
+					amount,
+					create_time,
+					end_time,
+					type,
+					cash_flow_hash,
+					status)
+		values
+		 	(#{moneyFlowNos},
+			#{enterpriseId},
+			#{accountId},
+			#{bankCard},
+			#{enterpriseName},
+			#{amount},
+			#{createTime},
+			#{endTime},
+			#{operationType},
+			#{cashFlowHash},
+			#{state})
+	</insert>
+	<!-- 入金退款的   接口返回成功 修改状态15的 -->
+	<update id="updateState" parameterType="FinanceBankPO">
+		update 
+			bank_money_flow 
+		set 
+			state=#{state},
+			end_time=#{endTime} 
+		where 
+			serialnumber in
+			<foreach collection="serialNumbers" item="serialnumber" open="(" close=")" separator=",">
+				#{serialnumber}
+			</foreach>
+	</update>
+
+    <!-- 入金退款的   接口返回成功 修改状态19的 -->
+	<update id="updateState2" parameterType="FinanceBankPO">
+		update 
+			bank_money_flow 
+		set 
+			state=#{state},
+			end_time=#{endTime} 
+		where 
+			serialnumber in
+			<foreach collection="serialNumbers2" item="serialnumber" open="(" close=")" separator=",">
+				#{serialnumber}
+			</foreach>
+	</update>
+	
+	<!--根据要请求得id set进去flag和sign  -->
+	<update id="updateFlagOrSignBySerialNumber" parameterType="FinanceBankPO">
+		update  
+		    bank_money_flow 
+		 set
+		    flag=#{flag},
+		    sign=#{sign}
+	    where
+	        serialnumber=#{serialnumber}
+	</update>
+
+
+
+</mapper>

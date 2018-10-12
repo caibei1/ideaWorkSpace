@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace = "com.fuzamei.mapper.RoleMapper">
+	
+	<!-- 查询符合条件的角色信息供前端显示(超级管理员用的方法) -->
+	<select id="queryRoleInfo" parameterType="RoleBO" resultType="RoleVO">
+		select
+			role_id,
+			role_name,
+			create_time,
+			update_time
+		from 
+			back_role
+		<where>
+			role_id!=1
+			<if test="roleName!=null and roleName!=''">
+				and role_name like "%"#{roleName}"%"
+			</if>
+		</where>
+		order by
+			create_time desc
+		limit
+			#{startPage},#{rowNum}
+	</select>
+	
+	<!-- 查询符合条件的角色信息总条数供前端分页使用(超级管理员用的方法)-->
+	<select id="queryRoleInfoCount" parameterType="RoleBO" resultType="int">
+		select
+			count(*)
+		from 
+			back_role
+		<where>
+			role_id!=1
+			<if test="roleName!=null and roleName!=''">
+				and role_name like "%"#{roleName}"%"
+			</if>
+		</where>
+	</select>
+	
+	<!-- 查询符合条件的角色信息供前端显示(管理员用的方法) -->
+	<select id="queryRoleInfoByAdmin" parameterType="RoleBO" resultType="RoleVO">
+		select
+			role_id,
+			role_name,
+			create_time,
+			update_time
+		from 
+			back_role
+		<where>
+			role_id not in(1,2)
+			<if test="roleName!=null and roleName!=''">
+				and role_name like "%"#{roleName}"%"
+			</if>
+		</where>
+		order by
+			create_time desc
+		limit
+			#{startPage},#{rowNum}
+	</select>
+	
+	<!-- 查询符合条件的角色信息总条数供前端分页使用(管理员用的方法)-->
+	<select id="queryRoleInfoCountByAdmin" parameterType="RoleBO" resultType="int">
+		select
+			count(*)
+		from 
+			back_role
+		<where>
+			role_id not in (1,2)
+			<if test="roleName!=null and roleName!=''">
+				and role_name like "%"#{roleName}"%"
+			</if>
+		</where>
+	</select>
+	
+	
+	
+	<!-- 物理删除角色信息 -->
+	<delete id="deleteRole" parameterType="RoleBO">
+		delete from back_role where role_id in
+		<foreach collection="roleIds" item="roleId" open="(" close=")" separator=",">
+			#{roleId}
+		</foreach>
+	</delete>
+	
+	<!-- 查询管理员的role_id和对应的user_id -->
+	<select id="queryAdminIfoName" resultType="UserDetailDTO">
+		select 
+			bur.role_id,
+			bur.user_id 
+		from 
+			back_role br
+		left join 
+			back_user_role bur
+		on 
+			br.role_id=bur.role_id
+		left join 
+			back_users bu
+		on
+			bu.user_id=bur.user_id
+		where 
+			br.role_name=#{admin} and bu.is_delete=1
+	</select>
+	
+	
+</mapper>
